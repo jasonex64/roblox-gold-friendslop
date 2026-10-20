@@ -15,6 +15,7 @@ jobs:
         with:
           python-version: "3.x"
       - run: python tools/board.py
+      - run: python tools/test_check_docs.py
       - name: check_docs (PR)
         if: github.event_name == 'pull_request'
         run: python tools/check_docs.py "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
