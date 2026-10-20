@@ -6,4 +6,4 @@ Never edit an entry's value in place — add a new entry that supersedes it.
 
 | ID | Date | Decision / value | Source (who / EXP) | Supersedes |
 |---|---|---|---|---|
-| D-001 | YYYY-MM-DD | <e.g. test session player count = ?> | <human> | — |
+| D-001 | 2026-10-19 | `main` is NOT branch-protected (free private repo can't enable it). Review is enforced by convention + `tools/check_docs.py` in CI, which flags undocumented pushes but cannot block them. Revisit before real game code lands. | jason | — |

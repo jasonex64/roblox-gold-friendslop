@@ -23,11 +23,14 @@ Everything is a file in git. No state lives in chat history, Discord, or an agen
 2. Run `python tools/board.py`. If it exits non-zero, fix the reported ticket files first. Do nothing else.
 3. Pick work: a ticket assigned to your human, or a `todo` ticket in the current milestone whose `depends_on` are all `done`.
 4. Read that ticket fully, including its Log. The last Log entry tells you where the previous agent stopped.
-5. Claim it: set `status: doing`, `owner`, `agent`, commit + push that one change alone. The push is the lock. If the push conflicts, someone else claimed it — pick another.
+5. Claim it: set `status: doing`, `owner`, `agent`, commit as `T-###: claim` + push to `main`, that one file alone. The push is the lock. If the push conflicts, someone else claimed it — pick another.
+
+Direct pushes to `main` are allowed ONLY for creating or claiming a ticket file. `main` is unprotected (D-001), so nothing stops you; the CI check will flag it loudly and someone will have to clean it up.
 
 ## 3. Doing the work
 
 - Branch: `T-###-short-name`. One ticket per branch.
+- Every commit message starts with `T-###: `. PR titles too (so squash merges keep the prefix).
 - Only build what the ticket's acceptance criteria need. No extra params, config, abstractions, or "future" hooks. Ideas go to `NEXT_REVISION.md`.
 - No invented numbers. Any literal that affects gameplay, timing, economy, limits, or retries must cite a `D-###` or `EXP-###` in a comment. If none exists: stop that part, add a question to the ticket Log, set `status: blocked`, `blocked_on: needs-number`.
 - Reason before experimenting. Write `EXP-###.md` (hypothesis, why, expected result, how measured) and commit it before running anything.
@@ -49,11 +52,13 @@ Open questions: <or "none">
 
 Unfinished work is fine. An unlogged session is not.
 
+`python tools/check_docs.py` enforces this: any commit that touches a file other than its own ticket file requires a new Log entry on that ticket in the same range. Run it before pushing a PR. CI (`.github/workflows/checks.yml`) runs it plus `board.py` on every PR and every push to `main`.
+
 ## 5. Finishing a ticket
 
 1. All acceptance criteria checked, with evidence (test output or manual check result) in the Log.
-2. Set `status: review`, `reviewer: <a different human>`. Open PR.
-3. Reviewer merges or returns it. Then `status: done`.
+2. Set `status: review`, `reviewer: <a different human>`. Open PR. CI must be green.
+3. Reviewer checks the Log matches the diff, then merges or returns it. Merging is the reviewer's job, never the author's or their agent's. Then `status: done`.
 
 ## 6. Milestone review
 
