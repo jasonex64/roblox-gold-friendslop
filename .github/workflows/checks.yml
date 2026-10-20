@@ -1,0 +1,23 @@
+name: checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: python tools/board.py
+      - name: check_docs (PR)
+        if: github.event_name == 'pull_request'
+        run: python tools/check_docs.py "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+      - name: check_docs (push to main)
+        if: github.event_name == 'push'
+        run: python tools/check_docs.py "${{ github.event.before }}..${{ github.sha }}"
