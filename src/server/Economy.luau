@@ -31,6 +31,9 @@ function Economy.new(config, session, camp, digging, sifting, remote)
 			PureEconomy.new(config, digging.get(player), sifting.get(player), Batch, Ledger)
 		publish(player, "ready", 0)
 	end
+	function self.refresh(player)
+		publish(player, "settled", 0)
+	end
 	local function context(player, action)
 		if not session.accepts() then
 			return "wrong_phase"
