@@ -16,7 +16,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "src" / "shared" / "Config.luau"
-NUMBER = re.compile(r"(?<![\w.])-?\d+(\.\d+)?(?![\w.])")
+# Any Luau number literal: 10, 1_000, 2.5, .5, 1e3, 1.5E-2, 0x10, 0XFF_FF, 0b1010.
+NUMBER = re.compile(
+    r"(?<![\w.])("
+    r"0[xX][0-9a-fA-F_]+|0[bB][01_]+"
+    r"|(\d[\d_]*(\.[\d_]*)?|\.\d[\d_]*)([eE][+-]?\d[\d_]*)?"
+    r")(?![\w.])"
+)
 CITE = re.compile(r"--\s*(D-\d{3}|EXP-\d{3}|PROVISIONAL DESIGN §(\d+))\s*$")
 
 
