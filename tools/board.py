@@ -1,9 +1,12 @@
 """Validate ticket files and print the board. Exits 1 on any invalid ticket.
 
-Usage: python tools/board.py
-Stdlib only. Source of truth is docs/tickets/T-*.md frontmatter.
+Usage: python tools/board.py            # claims read from `git ls-remote origin`
+       python tools/board.py --local    # skip the remote claim lookup (offline)
+Stdlib only. Source of truth is docs/tickets/T-*.md frontmatter on main,
+plus pushed `T-###-*` branches, which are claims (D-010).
 """
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -55,7 +58,26 @@ def check(t, path, all_ids):
     return errs
 
 
+def remote_claims():
+    """Map ticket id -> claiming branch names, from pushed T-###-* branches on origin."""
+    r = subprocess.run(["git", "ls-remote", "--heads", "origin", "refs/heads/T-*"],
+                       capture_output=True, text=True, encoding="utf-8")
+    if r.returncode != 0:
+        sys.exit(f"git ls-remote origin failed (use --local offline):\n{r.stderr.strip()}")
+    claims = {}
+    for line in r.stdout.splitlines():
+        branch = line.split("refs/heads/", 1)[1]
+        m = re.match(r"(T-\d{3})-", branch)
+        if m:
+            claims.setdefault(m.group(1), []).append(branch)
+    return claims
+
+
 def main():
+    args = sys.argv[1:]
+    if args not in ([], ["--local"]):
+        sys.exit(f"usage: python tools/board.py [--local], got {args}")
+    claims = {} if args else remote_claims()
     paths = sorted(TICKET_DIR.glob("T-*.md"))
     tickets, errors = {}, []
     for p in paths:
@@ -80,6 +102,8 @@ def main():
             ready = all(tickets[d][0]["status"] == "done" for d in t["depends_on"])
             who = f"{t['owner']}/{t['agent']}" if t["owner"] else "-"
             flag = "" if ready or t["status"] != "todo" else "  (waiting on deps)"
+            if t["status"] == "todo" and t["id"] in claims:
+                flag += f"  (claimed: {', '.join(sorted(claims[t['id']]))})"
             extra = f"  [{t['blocked_on']}]" if t["status"] == "blocked" else ""
             print(f"  {t['status']:<8} {t['id']}  {t['title']}  <{who}>{extra}{flag}")
 
