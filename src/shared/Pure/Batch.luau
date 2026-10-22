@@ -57,7 +57,8 @@ function Batch.canCreate(state: State, request: Request, config: Config): string
 	if not (request.now > -math.huge and request.now < math.huge) then
 		return "invalid_time"
 	end
-	if last ~= nil and not (request.now - last >= config.digInterval) then
+	-- Compare deadlines directly so decimal upgraded intervals keep inclusive edges.
+	if last ~= nil and not (request.now >= last + config.digInterval) then
 		return "over_rate"
 	end
 	if state.batches[request.id] ~= nil then

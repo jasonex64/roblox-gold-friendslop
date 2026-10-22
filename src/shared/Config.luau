@@ -4,6 +4,8 @@ return table.freeze({
 	readySeconds = 3, -- PROVISIONAL DESIGN §4
 	shiftSeconds = 600, -- PROVISIONAL DESIGN §4
 	digSeconds = 1, -- PROVISIONAL DESIGN §5
+	shovelUpgradePrice = 50, -- D-018
+	upgradedDigSeconds = 0.8, -- D-018
 	siftSeconds = 6, -- D-015
 	siftChecks = 3, -- D-015
 	siftSweepSeconds = 2, -- D-015

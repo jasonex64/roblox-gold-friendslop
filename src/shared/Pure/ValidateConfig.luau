@@ -9,6 +9,8 @@ local function validate(config: any)
 			"readySeconds",
 			"shiftSeconds",
 			"digSeconds",
+			"shovelUpgradePrice",
+			"upgradedDigSeconds",
 			"siftSeconds",
 			"siftChecks",
 			"siftSweepSeconds",
@@ -63,7 +65,9 @@ local function validate(config: any)
 		config.siftSeconds == config.siftChecks * config.siftSweepSeconds,
 		"Config.siftSeconds must match checks"
 	)
-	for _, key in { "dirtPerBatch", "bucketBatches", "outputCapacity", "siftChecks" } do
+	for _, key in
+		{ "dirtPerBatch", "bucketBatches", "outputCapacity", "siftChecks", "shovelUpgradePrice" }
+	do
 		assert(config[key] % 1 == 0, "Config." .. key .. " must be an integer")
 	end
 	assert(

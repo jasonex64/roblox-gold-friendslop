@@ -7,6 +7,7 @@ function Dig.new(config, Batch, draw)
 		openingCount = 0,
 		pending = nil,
 		sifting = false,
+		digSeconds = config.digSeconds,
 	}
 	local limits = {
 		digPhases = { running = true },
@@ -27,12 +28,16 @@ function Dig.new(config, Batch, draw)
 		-- Reserve time, not a batch or loot roll. The next completion is one full
 		-- duration away; a consecutive dig may start immediately after completion.
 		local completion = table.clone(request)
-		completion.now += config.digSeconds
-		local reason = Batch.canCreate(state, completion, limits)
+		assert(self.digSeconds > 0 and self.digSeconds < math.huge, "Dig: invalid dig duration")
+		completion.now += self.digSeconds
+		local attemptLimits = table.clone(limits)
+		attemptLimits.digInterval = self.digSeconds
+		local reason = Batch.canCreate(state, completion, attemptLimits)
 		if reason then
 			return reason
 		end
-		self.pending = { request = table.clone(request), due = completion.now }
+		self.pending =
+			{ request = table.clone(request), due = completion.now, limits = attemptLimits }
 		return "started"
 	end
 	function self.cancel()
@@ -56,7 +61,7 @@ function Dig.new(config, Batch, draw)
 		request.distance = distance
 		local state = table.clone(self.state)
 		state.phase = phase
-		local nextState, reason = Batch.create(state, request, limits, function()
+		local nextState, reason = Batch.create(state, request, pending.limits, function()
 			return draw(self.openingCount, request)
 		end)
 		self.pending = nil
