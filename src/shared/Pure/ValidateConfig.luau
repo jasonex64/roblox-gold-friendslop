@@ -10,6 +10,15 @@ local function validate(config: any)
 			"shiftSeconds",
 			"digSeconds",
 			"siftSeconds",
+			"siftChecks",
+			"siftSweepSeconds",
+			"siftPerfectWidth",
+			"siftGoodWidth",
+			"siftUpgradeWidth",
+			"siftPerfectBonus",
+			"siftGoodBonus",
+			"siftMissPenalty",
+			"siftMinimumValue",
 			"dirtPerBatch",
 			"bucketBatches",
 			"outputCapacity",
@@ -45,7 +54,16 @@ local function validate(config: any)
 			end
 		end
 	end
-	for _, key in { "dirtPerBatch", "bucketBatches", "outputCapacity" } do
+	assert(
+		config.siftPerfectWidth + 2 * config.siftGoodWidth <= 1,
+		"Config.sift zones must fit sweep"
+	)
+	assert(config.siftMinimumValue <= 1, "Config.siftMinimumValue must not exceed base value")
+	assert(
+		config.siftSeconds == config.siftChecks * config.siftSweepSeconds,
+		"Config.siftSeconds must match checks"
+	)
+	for _, key in { "dirtPerBatch", "bucketBatches", "outputCapacity", "siftChecks" } do
 		assert(config[key] % 1 == 0, "Config." .. key .. " must be an integer")
 	end
 	assert(

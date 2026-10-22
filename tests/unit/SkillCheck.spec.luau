@@ -8,6 +8,49 @@ local function start()
 end
 
 return {
+	["SKILL D-015 perfect edges and both good wings are server graded"] = function(t)
+		for _, case in
+			{
+				{ 0.2999, "miss" },
+				{ 0.3, "good" },
+				{ 0.4499, "good" },
+				{ 0.45, "perfect" },
+				{ 0.5, "perfect" },
+				{ 0.55, "perfect" },
+				{ 0.5501, "good" },
+				{ 0.7, "good" },
+				{ 0.7001, "miss" },
+			}
+		do
+			local check = SkillCheck.start(
+				10,
+				{ zoneWidth = 0.4, perfectWidth = 0.1, needleSpeed = 0.5 },
+				function()
+					return 0.5
+				end
+			)
+			t.equal(SkillCheck.grade(check, 10 + case[1] / 0.5), case[2])
+			t.errors(function()
+				SkillCheck.grade(check, 11)
+			end)
+		end
+	end,
+	["SKILL D-015 invalid perfect zones fail before random draw"] = function(t)
+		for _, width in { 0, -1, 0.5, math.huge, 0 / 0 } do
+			local draws = 0
+			t.errors(function()
+				SkillCheck.start(
+					0,
+					{ zoneWidth = 0.4, perfectWidth = width, needleSpeed = 0.5 },
+					function()
+						draws += 1
+						return 0.5
+					end
+				)
+			end)
+			t.equal(draws, 0)
+		end
+	end,
 	["SKILL-1 snapshots config and uses exactly one injected draw"] = function(t)
 		local config = { zoneWidth = 0.25, needleSpeed = 0.5 }
 		local calls = 0

@@ -11,6 +11,14 @@ local spawn = require(script.Camp).build(Config)
 local session = Session.new(Config, os.clock, HttpService:GenerateGUID(false))
 local Digging = require(script.Digging)
 local digging = Digging.new(Config, session, workspace.RiverCamp)
+local siftRemote = Instance.new("RemoteEvent")
+siftRemote.Name = "SiftRequest"
+local sifting =
+	require(script.Sifting).new(Config, session, workspace.RiverCamp, digging, siftRemote)
+siftRemote.OnServerEvent:Connect(function(player, ...)
+	sifting.request(player, ...)
+end)
+siftRemote.Parent = ReplicatedStorage
 local remote = Instance.new("RemoteEvent")
 remote.Name = "DigRequest"
 remote.OnServerEvent:Connect(function(player, ...)
@@ -39,6 +47,7 @@ gate.Parent = script
 
 local function equip(player)
 	digging.add(player)
+	sifting.add(player)
 	player.RespawnLocation = spawn
 	player:SetAttribute("DirtPerBatch", Config.dirtPerBatch)
 	player:SetAttribute("BucketBatches", Config.bucketBatches)
@@ -60,6 +69,7 @@ local function equip(player)
 		table.insert(tools, tool)
 	end
 	local function preserve()
+		sifting.cancel(player)
 		digging.cancel(player)
 		for _, tool in tools do
 			tool.Parent = storage
@@ -86,6 +96,7 @@ local function equip(player)
 					tool:Destroy()
 				end
 				storage:Destroy()
+				sifting.remove(player)
 				digging.remove(player)
 			end
 		end)
@@ -103,6 +114,17 @@ inventory.OnInvoke = function(player)
 	return { state = controller.state, openingCount = controller.openingCount }
 end
 inventory.Parent = script
+local siftInventory = Instance.new("BindableFunction")
+siftInventory.Name = "GetSiftState"
+siftInventory.OnInvoke = function(player)
+	local controller = sifting.get(player)
+	return {
+		pending = controller.pending,
+		outputs = controller.outputs,
+		reserved = controller.reserved,
+	}
+end
+siftInventory.Parent = script
 Players.PlayerAdded:Connect(equip)
 for _, player in Players:GetPlayers() do
 	equip(player)
@@ -118,6 +140,7 @@ RunService.Heartbeat:Connect(function()
 	end
 	session.advance(ready)
 	digging.step()
+	sifting.step()
 	status:SetAttribute("Phase", session.run.phase)
 	status:SetAttribute("StartedAt", session.run.startedAt)
 	status:SetAttribute("EndsAt", session.run.endsAt)

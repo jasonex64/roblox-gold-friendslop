@@ -6,6 +6,7 @@ function Dig.new(config, Batch, draw)
 		state = { phase = "waiting", batches = {}, lastDigAt = {} },
 		openingCount = 0,
 		pending = nil,
+		sifting = false,
 	}
 	local limits = {
 		digPhases = { running = true },
@@ -15,6 +16,9 @@ function Dig.new(config, Batch, draw)
 		digInterval = config.digSeconds,
 	}
 	function self.start(request, phase)
+		if self.sifting then
+			return "busy_sifting"
+		end
 		if self.pending then
 			return "over_rate"
 		end
