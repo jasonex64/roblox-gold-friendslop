@@ -3,13 +3,14 @@
 -- The server owns the check and supplies authoritative timestamps.
 local SkillCheck = {}
 
-export type Config = { zoneWidth: number, needleSpeed: number }
+export type Config = { zoneWidth: number, needleSpeed: number, perfectWidth: number? }
 export type Check = {
 	startedAt: number,
 	zoneStart: number,
 	zoneWidth: number,
 	needleSpeed: number,
 	graded: boolean,
+	perfectWidth: number?,
 }
 
 local function finite(value: number): boolean
@@ -27,6 +28,12 @@ function SkillCheck.start(now: number, config: Config, rng: () -> number): Check
 		"SkillCheck.start: needleSpeed must be finite and positive"
 	)
 	-- A single normalized draw places the whole zone inside the sweep.
+	if config.perfectWidth ~= nil then
+		assert(
+			config.perfectWidth > 0 and config.perfectWidth <= config.zoneWidth,
+			"SkillCheck.start: perfectWidth must fit inside zoneWidth"
+		)
+	end
 	local placement = rng()
 	assert(placement >= 0 and placement <= 1, "SkillCheck.start: rng must return a value in [0, 1]")
 	return {
@@ -35,6 +42,7 @@ function SkillCheck.start(now: number, config: Config, rng: () -> number): Check
 		zoneWidth = config.zoneWidth,
 		needleSpeed = config.needleSpeed,
 		graded = false,
+		perfectWidth = config.perfectWidth,
 	}
 end
 
@@ -52,6 +60,15 @@ function SkillCheck.grade(check: Check, pressTime: number): string
 	if pressTime > check.startedAt + 1 / check.needleSpeed then
 		return "expired"
 	elseif pressTime >= zoneEntry and pressTime <= zoneExit then
+		if check.perfectWidth ~= nil then
+			local goodWidth = (check.zoneWidth - check.perfectWidth) / 2
+			local perfectEntry = check.startedAt + (check.zoneStart + goodWidth) / check.needleSpeed
+			local perfectExit = check.startedAt
+				+ (check.zoneStart + goodWidth + check.perfectWidth) / check.needleSpeed
+			return if pressTime >= perfectEntry and pressTime <= perfectExit
+				then "perfect"
+				else "good"
+		end
 		return "success"
 	else
 		return "miss"

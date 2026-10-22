@@ -4,7 +4,16 @@ return table.freeze({
 	readySeconds = 3, -- PROVISIONAL DESIGN §4
 	shiftSeconds = 600, -- PROVISIONAL DESIGN §4
 	digSeconds = 1, -- PROVISIONAL DESIGN §5
-	siftSeconds = 4, -- PROVISIONAL DESIGN §5
+	siftSeconds = 6, -- D-015
+	siftChecks = 3, -- D-015
+	siftSweepSeconds = 2, -- D-015
+	siftPerfectWidth = 0.05, -- D-016
+	siftGoodWidth = 0.10, -- D-016
+	siftUpgradeWidth = 0.25, -- D-015
+	siftPerfectBonus = 0.20, -- D-015
+	siftGoodBonus = 0.10, -- D-015
+	siftMissPenalty = 0.20, -- D-015
+	siftMinimumValue = 0.40, -- D-015
 	dirtPerBatch = 5, -- PROVISIONAL DESIGN §5
 	bucketBatches = 5, -- PROVISIONAL DESIGN §5
 	outputCapacity = 20, -- PROVISIONAL DESIGN §5
