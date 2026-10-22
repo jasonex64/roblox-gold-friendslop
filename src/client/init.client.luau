@@ -83,6 +83,7 @@ local siftPanel = Theme.surface(root, "Sift", Theme.white)
 siftPanel.Visible = false
 siftPanel.ZIndex = 3
 local siftTitle = Theme.text(siftPanel, "Title", "Sift for Gold!", 25, true)
+local hitFeedback = require(script.HitFeedback).new(root, siftPanel, siftTitle, Theme)
 local grade = Theme.text(siftPanel, "Grade", "Gold: PERFECT • Green: GOOD", 14, false)
 local dial = Instance.new("Frame")
 dial.Name = "Dial"
@@ -275,6 +276,7 @@ local function refresh()
 	end
 	local id = status:GetAttribute("RunId")
 	if id and id ~= lastRunId then
+		hitFeedback.clear()
 		lastRunId = id
 		current = nil
 		sent = false
@@ -291,6 +293,12 @@ economyRemote.OnClientEvent:Connect(feedbackCode)
 runRemote.OnClientEvent:Connect(feedbackCode)
 ReplicatedStorage:WaitForChild("DigRequest").OnClientEvent:Connect(feedbackCode)
 siftRemote.OnClientEvent:Connect(function(code, view, find)
+	local hitGrade = if code == "completed" and find then find.results[#find.results] else code
+	if hitGrade == "good" or hitGrade == "perfect" then
+		hitFeedback.play(hitGrade)
+	elseif code == "cancelled" or code == "miss" or code == "expired" or code == "ready" then
+		hitFeedback.clear()
+	end
 	if not current or not view or current.id ~= view.id or current.index ~= view.index then
 		sent = false
 		pointer.Rotation = 0
@@ -368,6 +376,7 @@ local function watch(tool)
 	end)
 end
 local function characterAdded(character)
+	hitFeedback.clear()
 	current = nil
 	sent = false
 	local backpack = player:WaitForChild("Backpack")
