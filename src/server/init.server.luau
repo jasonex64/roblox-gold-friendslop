@@ -46,6 +46,13 @@ status.Name = "RunStatus"
 status:SetAttribute("RunId", session.run.id)
 status:SetAttribute("RulesVersion", Config.rulesVersion)
 status.Parent = ReplicatedStorage
+local shift = require(script.Shift).new(session, digging, sifting, economy, status, spawn)
+local runRemote = Instance.new("RemoteEvent")
+runRemote.Name = "RunRequest"
+runRemote.OnServerEvent:Connect(function(player, ...)
+	runRemote:FireClient(player, shift.request(player, ...))
+end)
+runRemote.Parent = ReplicatedStorage
 
 -- Server-only gate for production handlers added by subsequent tickets.
 local gate = Instance.new("BindableFunction")
@@ -161,11 +168,10 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 	session.advance(ready)
-	digging.step()
-	sifting.step()
-	status:SetAttribute("Phase", session.run.phase)
-	status:SetAttribute("StartedAt", session.run.startedAt)
-	status:SetAttribute("EndsAt", session.run.endsAt)
-	status:SetAttribute("AcceptingProduction", session.accepts())
+	shift.step()
+	if session.accepts() then
+		digging.step()
+		sifting.step()
+	end
 end)
 print("[server] boot ok")

@@ -107,6 +107,10 @@ remote.OnClientEvent:Connect(function(result, view, find)
 	end
 	panel.Visible = equipped or current ~= nil
 	title.Text = result:gsub("_", " ")
+	if result == "ready" then
+		reveal.Visible = false
+		reveal.Text = ""
+	end
 	if view then
 		reveal.Visible = false
 		title.Text = string.format("Check %d / %d — %s", view.index, view.total, title.Text)
