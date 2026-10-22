@@ -197,6 +197,10 @@ local function activate()
 	end
 	if current then
 		if not current.graded and not sent then
+			if workspace:GetServerTimeNow() < current.startedAt then
+				feedback.Text = "Get ready — the needle starts shortly!"
+				return
+			end
 			sent = true
 			siftRemote:FireServer("press", current.id, current.index)
 		end
@@ -293,6 +297,7 @@ ReplicatedStorage:WaitForChild("DigRequest").OnClientEvent:Connect(feedbackCode)
 siftRemote.OnClientEvent:Connect(function(code, view, find)
 	if not current or not view or current.id ~= view.id or current.index ~= view.index then
 		sent = false
+		pointer.Rotation = 0
 	end
 	current = view
 	feedbackCode(code)
@@ -320,6 +325,11 @@ siftRemote.OnClientEvent:Connect(function(code, view, find)
 end)
 RunService.RenderStepped:Connect(function()
 	if current then
+		if not current.graded then
+			grade.Text = if workspace:GetServerTimeNow() < current.startedAt
+				then "Get ready..."
+				else "GOLD: perfect\nGREEN: good"
+		end
 		pointer.Rotation = math.clamp(
 			(workspace:GetServerTimeNow() - current.startedAt) / current.duration,
 			0,

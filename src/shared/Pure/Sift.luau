@@ -46,13 +46,15 @@ function Sift.new(config, dig, Batch, SkillCheck, rng)
 		local starterWidth = settings.siftPerfectWidth + 2 * settings.siftGoodWidth
 		scale = math.min(scale, 1 / starterWidth)
 		local duration = settings.siftSweepSeconds / rate
+		local interval = duration + settings.siftPreviewSeconds
 		local checks = {}
 		for index = 1, settings.siftChecks do
-			checks[index] = SkillCheck.start(now + (index - 1) * duration, {
-				zoneWidth = starterWidth * scale,
-				perfectWidth = settings.siftPerfectWidth * scale,
-				needleSpeed = 1 / duration,
-			}, rng)
+			checks[index] =
+				SkillCheck.start(now + settings.siftPreviewSeconds + (index - 1) * interval, {
+					zoneWidth = starterWidth * scale,
+					perfectWidth = settings.siftPerfectWidth * scale,
+					needleSpeed = 1 / duration,
+				}, rng, checks[index - 1])
 		end
 		local batches = table.clone(dig.state.batches)
 		batches[selected.id] = Batch.transition(selected, "processing")
@@ -66,7 +68,7 @@ function Sift.new(config, dig, Batch, SkillCheck, rng)
 			checks = checks,
 			index = 1,
 			startedAt = now,
-			endsAt = now + settings.siftChecks * duration,
+			endsAt = now + settings.siftChecks * interval,
 			duration = duration,
 			rate = rate,
 			settings = settings,

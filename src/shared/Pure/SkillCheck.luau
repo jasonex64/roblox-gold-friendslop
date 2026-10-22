@@ -17,7 +17,7 @@ local function finite(value: number): boolean
 	return value > -math.huge and value < math.huge
 end
 
-function SkillCheck.start(now: number, config: Config, rng: () -> number): Check
+function SkillCheck.start(now: number, config: Config, rng: () -> number, previous: Check?): Check
 	assert(finite(now), "SkillCheck.start: now must be finite")
 	assert(
 		config.zoneWidth > 0 and config.zoneWidth <= 1,
@@ -36,9 +36,32 @@ function SkillCheck.start(now: number, config: Config, rng: () -> number): Check
 	end
 	local placement = rng()
 	assert(placement >= 0 and placement <= 1, "SkillCheck.start: rng must return a value in [0, 1]")
+	local maximum = 1 - config.zoneWidth
+	local zoneStart = placement * maximum
+	if previous then
+		-- Sample the free spans on either side of the previous target, once.
+		-- Adjacent checks cannot overlap when their widths leave room to separate.
+		local leftEnd = previous.zoneStart - config.zoneWidth
+		local rightStart = previous.zoneStart + previous.zoneWidth
+		local leftLength = math.max(0, leftEnd)
+		local rightLength = math.max(0, maximum - rightStart)
+		local distance = placement * (leftLength + rightLength)
+		if leftLength + rightLength > 0 then
+			zoneStart = if distance < leftLength or rightLength == 0
+				then distance
+				else rightStart + distance - leftLength
+		elseif leftEnd >= 0 then
+			zoneStart = 0
+		elseif rightStart <= maximum then
+			zoneStart = maximum
+		else
+			-- Very wide upgraded targets cannot be disjoint. Maximize separation.
+			zoneStart = if previous.zoneStart < maximum / 2 then maximum else 0
+		end
+	end
 	return {
 		startedAt = now,
-		zoneStart = placement * (1 - config.zoneWidth),
+		zoneStart = zoneStart,
 		zoneWidth = config.zoneWidth,
 		needleSpeed = config.needleSpeed,
 		graded = false,

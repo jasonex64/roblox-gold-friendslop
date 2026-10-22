@@ -8,6 +8,48 @@ local function start()
 end
 
 return {
+	["SKILL consecutive starter targets do not overlap, including endpoint draws"] = function(t)
+		for _, priorStart in { 0, 0.125, 0.375, 0.625, 0.75 } do
+			for _, draw in { 0, 0.25, 0.5, 0.75, 1 } do
+				local previous = SkillCheck.start(
+					0,
+					{ zoneWidth = 0.25, needleSpeed = 0.5 },
+					function()
+						return priorStart / 0.75
+					end
+				)
+				local calls = 0
+				local check = SkillCheck.start(
+					2.5,
+					{ zoneWidth = 0.25, needleSpeed = 0.5 },
+					function()
+						calls += 1
+						return draw
+					end,
+					previous
+				)
+				t.equal(calls, 1)
+				t.equal(check.zoneStart >= 0 and check.zoneStart + check.zoneWidth <= 1, true)
+				t.equal(
+					check.zoneStart >= previous.zoneStart + previous.zoneWidth
+						or check.zoneStart + check.zoneWidth <= previous.zoneStart,
+					true
+				)
+			end
+		end
+	end,
+	["SKILL wide upgrades choose farthest available placement without rerolls"] = function(t)
+		for _, width in { 0.5, 0.75, 1 } do
+			local previous = SkillCheck.start(0, { zoneWidth = width, needleSpeed = 1 }, function()
+				return 0.5
+			end)
+			local check = SkillCheck.start(2, { zoneWidth = width, needleSpeed = 1 }, function()
+				return 1
+			end, previous)
+			t.equal(check.zoneStart >= 0 and check.zoneStart + width <= 1, true)
+			t.equal(check.zoneStart == 0 or check.zoneStart == 1 - width, true)
+		end
+	end,
 	["SKILL D-015 perfect edges and both good wings are server graded"] = function(t)
 		for _, case in
 			{
