@@ -66,3 +66,7 @@ Pure-logic tickets (T-014..T-017) need only T-001, so up to four agents can work
 
 ### Owner decisions recorded in this revision
 D-002: shared crew success. D-003: personal wallets, even sale-value splits and voluntary group funding. D-004: relaxed mining with a late production rush; the night alternative is not selected. D-005: paid-power direction with no serious-competition requirement. D-006: rarities and retained class ownership with between-run swaps. D-007: personal cash. D-008: a timing minigame similar to dead by daylight skillchecks. The exact statements and source names are in DECISIONS.md; these summaries introduce no additional decision. Multiplayer funding, night alternatives, monetization and classes remain deferred to Gate B+ planning. Gate A implements only its approved slice and still needs skill-check rules/tuning.
+
+## ART — Art pass (after Gate A, optional tooling)
+Starts only after T-011. Nothing in M0 or M1 depends on it.
+- T-018 Add the Blender pipeline for the art pass
