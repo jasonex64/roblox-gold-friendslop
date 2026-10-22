@@ -34,14 +34,9 @@ local function pressGrade(sift, index, grade)
 		else (if check.zoneStart > 0 then 0 else (1 + check.zoneWidth) / 2)
 	return sift.press(check.startedAt + position / check.needleSpeed, "attempt", index)
 end
-local function finishCheck(sift, index)
-	local check = sift.pending.checks[index]
-	sift.step(check.startedAt + sift.pending.duration, true)
-end
 local function play(sift, grade)
 	for index = 1, 3 do
 		assert(pressGrade(sift, index, grade) == grade)
-		finishCheck(sift, index)
 	end
 end
 return {
@@ -60,14 +55,20 @@ return {
 			t.equal(pressGrade(sift, index, "perfect"), "perfect")
 			if index > 1 then
 				local prior = pending.checks[index - 1]
-				t.equal(check.startedAt - (prior.startedAt + pending.duration), 0.5)
+				t.equal(
+					check.startedAt
+						- (
+							prior.startedAt
+							+ (prior.zoneStart + prior.zoneWidth / 2) / prior.needleSpeed
+						),
+					0.5
+				)
 				t.equal(
 					check.zoneStart >= prior.zoneStart + prior.zoneWidth
 						or check.zoneStart + check.zoneWidth <= prior.zoneStart,
 					true
 				)
 			end
-			finishCheck(sift, index)
 		end
 		t.equal(sift.pending, nil)
 	end,
@@ -82,11 +83,8 @@ return {
 			sift.start(10, "attempt", 0, 1)
 			-- good + good + miss = no net value change.
 			t.equal(pressGrade(sift, 1, "good"), "good")
-			finishCheck(sift, 1)
 			t.equal(pressGrade(sift, 2, "good"), "good")
-			finishCheck(sift, 2)
 			t.equal(pressGrade(sift, 3, "miss"), "miss")
-			finishCheck(sift, 3)
 			t.equal(sift.outputs.batch.value, case[2])
 		end
 	end,
@@ -175,17 +173,21 @@ return {
 			t.equal(next(sift.outputs), nil)
 		end
 	end,
-	["SIFT-4 press cannot complete early; stale and repeated inputs grant nothing"] = function(t)
+	["SIFT-4 accepted press advances immediately; stale and preview inputs grant nothing"] = function(
+		t
+	)
 		local sift = setup()
 		sift.start(10, "attempt", 0, 1)
 		t.equal(sift.press(11, "forged", 1), "stale_check")
 		t.equal(sift.press(11, "attempt", 2), "stale_check")
 		t.equal(sift.press(9, "attempt", 1), "outside_check")
 		t.equal(pressGrade(sift, 1, "perfect"), "perfect")
-		t.equal(pressGrade(sift, 1, "perfect"), "already_graded")
+		t.equal(pressGrade(sift, 1, "perfect"), "stale_check")
+		t.equal(sift.pending.index, 2)
+		t.equal(sift.press(sift.pending.checks[2].startedAt - 0.001, "attempt", 2), "outside_check")
 		t.equal(next(sift.outputs), nil)
 		t.equal(sift.step(11.99, true), "sifting")
-		t.equal(sift.press(12.5, "attempt", 1), "outside_check")
+		t.equal(sift.press(12.5, "attempt", 1), "stale_check")
 	end,
 	["SIFT-5 perfect good miss and timeout apply approved additive modifiers"] = function(t)
 		for _, case in { { "perfect", 1.6 }, { "good", 1.3 }, { "miss", 0.4 } } do
@@ -207,11 +209,8 @@ return {
 		local outcome = dig.state.batches.batch.outcome
 		sift.start(10, "attempt", 0, 1)
 		t.equal(pressGrade(sift, 1, "perfect"), "perfect")
-		finishCheck(sift, 1)
 		t.equal(pressGrade(sift, 2, "good"), "good")
-		finishCheck(sift, 2)
 		t.equal(pressGrade(sift, 3, "miss"), "miss")
-		finishCheck(sift, 3)
 		t.equal(sift.outputs.batch.outcome, outcome)
 		t.equal(math.abs(sift.outputs.batch.value - 220) < 0.000001, true)
 	end,

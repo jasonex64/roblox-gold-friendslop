@@ -87,8 +87,7 @@ print(
 for index, check in pending.checks do
 	local time = check.startedAt + (check.zoneStart + check.zoneWidth / 2) / check.needleSpeed
 	assert(controller.press(time, pending.id, index) == "perfect")
-	assert(controller.press(time, pending.id, index) == "already_graded")
-	controller.step(check.startedAt + pending.duration, true)
+	assert(controller.press(time, pending.id, index) == "stale_check")
 end
 local find = controller.outputs[original.id]
 assert(find and math.abs(find.value - 320) < 0.000001)

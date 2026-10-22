@@ -106,7 +106,14 @@ function Sift.new(config, dig, Batch, SkillCheck, rng)
 		end
 		local result = SkillCheck.grade(check, now)
 		pending.results[index] = result
-		return result
+		-- D-021: accepted hits resolve immediately; keep the next preview intact.
+		local saved = check.startedAt + pending.duration - now
+		for nextIndex = index + 1, #pending.checks do
+			pending.checks[nextIndex].startedAt -= saved
+		end
+		pending.endsAt -= saved
+		local _, find = self.step(now, true)
+		return result, find
 	end
 	function self.step(now, allowed)
 		assert(finite(now), "Sift: invalid step time")
@@ -121,7 +128,7 @@ function Sift.new(config, dig, Batch, SkillCheck, rng)
 		assert(now >= pending.startedAt, "Sift: step precedes start")
 		while pending.index <= #pending.checks do
 			local check = pending.checks[pending.index]
-			if now < check.startedAt + pending.duration then
+			if not check.graded and now < check.startedAt + pending.duration then
 				return "sifting"
 			end
 			if not check.graded then

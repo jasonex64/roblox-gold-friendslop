@@ -101,7 +101,7 @@ function Sifting.new(config, session, camp, digging, remote)
 			publish(player, "invalid_request")
 			return "invalid_request"
 		end
-		local result
+		local result, find
 		if action == "cancel" then
 			result = controller.cancel()
 		else
@@ -118,10 +118,10 @@ function Sifting.new(config, session, camp, digging, remote)
 				)
 			else
 				-- No client timestamp, grade, value, or batch identity is accepted.
-				result = controller.press(workspace:GetServerTimeNow(), args[1], args[2])
+				result, find = controller.press(workspace:GetServerTimeNow(), args[1], args[2])
 			end
 		end
-		publish(player, result)
+		publish(player, if find then "completed" else result, find)
 		return result
 	end
 	function self.step()
