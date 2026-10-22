@@ -39,7 +39,7 @@ local function stat(name, color)
 	local title = Theme.text(box, "Title", name, 14, true)
 	title.Size = UDim2.new(1, -8, 0, 18)
 	title.Position = UDim2.fromOffset(4, 3)
-	local value = Theme.text(box, "Value", "...", 26, true)
+	local value = Theme.text(box, "Value", "...", 22, true)
 	value.Size = UDim2.new(1, -8, 1, -22)
 	value.Position = UDim2.fromOffset(4, 20)
 	return box, value
@@ -142,41 +142,31 @@ local lastRunId = nil
 local function layout()
 	local w, h = root.AbsoluteSize.X, root.AbsoluteSize.Y
 	local compact = h < 480
-	local topWidth = math.min(w - 24, 700)
-	place(top, (w - topWidth) / 2, 8, topWidth, 58)
-	local cell = (topWidth - 68) / 3
-	local statHeight = if compact then 48 else 56
+	local topWidth = w - 24
+	place(top, 12, 8, topWidth, 48)
+	local cell = math.min(130, (topWidth - 68) / 3)
+	local statHeight = 48
 	place(haulBox, 0, 0, cell, statHeight)
 	place(cashBox, cell + 8, 0, cell, statHeight)
-	place(timerBox, (cell + 8) * 2, 0, cell, statHeight)
+	place(timerBox, topWidth - cell - 52, 0, cell, statHeight)
 	place(help, topWidth - 44, 2, 44, 44)
-	place(
-		info,
-		(w - math.min(w - 32, 480)) / 2,
-		if compact then 64 else 74,
-		math.min(w - 32, 480),
-		28
-	)
-	place(feedback, w * 0.1, if compact then 96 else 110, w * 0.8, if compact then 24 else 34)
-	local dw = math.min(w - 32, 500)
-	place(dock, (w - dw) / 2, h - (if compact then 182 else 200), dw, 112)
-	place(hint, 10, 5, dw - 20, 48)
-	place(primary, 10, 58, dw - 20, 44)
-	place(buy, dw - 155, 58, 145, 44)
-	local sw = math.min(w - 32, 410)
-	local sh = if compact then 202 else 304
-	place(siftPanel, (w - sw) / 2, math.min(math.max(96, (h - sh) / 2), h - sh - 6), sw, sh)
+	place(info, 12, 64, cell * 2 + 8, 26)
+	place(feedback, 12, 96, math.min(w - 24, 320), 42)
+	local dw = math.min(w - 32, 360)
+	local bottom = if UserInputService.TouchEnabled then 88 else 16
+	place(dock, w - dw - 12, h - bottom - 100, dw, 100)
+	place(hint, 10, 4, dw - 20, 42)
+	place(primary, 10, 48, dw - 20, 44)
+	place(buy, dw - 125, 48, 115, 44)
+	local sw = math.min(w - 32, 360)
+	local sh = 202
+	place(siftPanel, w - sw - 12, math.max(6, h - sh - (if compact then 6 else 24)), sw, sh)
 	place(siftTitle, 8, 6, sw - 16, 30)
-	if compact then
+	do
 		place(dial, 12, 44, 132, 132)
 		place(grade, 152, 38, sw - 164, 48)
 		place(hit, 156, 92, sw - 170, 44)
 		place(cancel, 156, 148, sw - 170, 44)
-	else
-		place(dial, (sw - 166) / 2, 40, 166, 166)
-		place(grade, 8, 209, sw - 16, 34)
-		place(hit, 12, 250, (sw - 36) * 0.6, 44)
-		place(cancel, 24 + (sw - 36) * 0.6, 250, (sw - 36) * 0.4, 44)
 	end
 	local mw = math.min(w - 28, 510)
 	local mh = math.min(h - 22, 370)
@@ -228,17 +218,17 @@ buy.Activated:Connect(function()
 	actionRemote:FireServer("buy")
 end)
 local actions = {
-	dig = "Dig Dirt",
-	sift = "Sift Dirt",
-	sell = "Sell All",
-	buy = "Buy Shovel",
-	cancel = "Cancel Dig",
-	hit = "Hit the Zone",
-	none = "Follow the Prompt",
+	dig = "dig",
+	sift = "sift",
+	sell = "sell all",
+	buy = "buy shovel",
+	cancel = "cancel dig",
+	hit = "hit the zone",
+	none = "Follow the prompt",
 }
 local function refresh()
-	hit.Caption.Text = if UserInputService.TouchEnabled then "HIT!" else "HIT! / Space"
-	cancel.Caption.Text = if UserInputService.TouchEnabled then "Cancel" else "Cancel / Q"
+	hit.Caption.Text = if UserInputService.TouchEnabled then "Tap to hit!" else "Press Space to hit"
+	cancel.Caption.Text = if UserInputService.TouchEnabled then "Cancel" else "Press Q to cancel"
 	local phase = status:GetAttribute("Phase")
 	local seconds = status:GetAttribute("RemainingSeconds")
 	if phase and seconds ~= nil then
@@ -265,14 +255,16 @@ local function refresh()
 	if action and nextHint then
 		assert(actions[action], "HUD: unknown action " .. action)
 		hint.Text = nextHint
-		primary.Caption.Text = actions[action]
-			.. (if UserInputService.TouchEnabled then "" else " / E")
+		primary.Caption.Text = if action == "none"
+			then actions[action]
+			else (if UserInputService.TouchEnabled then "Tap to " else "Press E to ")
+				.. actions[action]
 	end
 	buy.Visible = player:GetAttribute("Station") == "Camp" and phase == "running"
 	buy.Caption.Text = if player:GetAttribute("ShovelUpgraded")
 		then "Shovel Owned"
 		else string.format("Shovel $%d", Config.shovelUpgradePrice)
-	primary.Size = UDim2.new(1, if buy.Visible then -175 else -20, 0, 44)
+	primary.Size = UDim2.new(1, if buy.Visible then -145 else -20, 0, 44)
 	dock.Visible = current == nil and phase ~= "results"
 	siftPanel.Visible = current ~= nil and phase == "running"
 	local result = status:GetAttribute("ResultHaul")
@@ -341,7 +333,8 @@ ContextActionService:BindAction("CampAction", function(_, state)
 	end
 	return Enum.ContextActionResult.Sink
 end, false, Enum.KeyCode.E)
-ContextActionService:BindAction("SiftHit", function(_, state)
+-- Beat the default character jump binding regardless of script startup order.
+ContextActionService:BindActionAtPriority("SiftHit", function(_, state)
 	if not current then
 		return Enum.ContextActionResult.Pass
 	end
@@ -349,7 +342,7 @@ ContextActionService:BindAction("SiftHit", function(_, state)
 		activate()
 	end
 	return Enum.ContextActionResult.Sink
-end, false, Enum.KeyCode.Space)
+end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.Space)
 ContextActionService:BindAction("CancelAction", function(_, state)
 	if state == Enum.UserInputState.Begin then
 		actionRemote:FireServer("cancel")
