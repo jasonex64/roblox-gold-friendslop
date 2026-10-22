@@ -19,6 +19,20 @@ siftRemote.OnServerEvent:Connect(function(player, ...)
 	sifting.request(player, ...)
 end)
 siftRemote.Parent = ReplicatedStorage
+local economyRemote = Instance.new("RemoteEvent")
+economyRemote.Name = "EconomyRequest"
+local economy = require(script.Economy).new(
+	Config,
+	session,
+	workspace.RiverCamp,
+	digging,
+	sifting,
+	economyRemote
+)
+economyRemote.OnServerEvent:Connect(function(player, ...)
+	economy.request(player, ...)
+end)
+economyRemote.Parent = ReplicatedStorage
 local remote = Instance.new("RemoteEvent")
 remote.Name = "DigRequest"
 remote.OnServerEvent:Connect(function(player, ...)
@@ -48,6 +62,7 @@ gate.Parent = script
 local function equip(player)
 	digging.add(player)
 	sifting.add(player)
+	economy.add(player)
 	player.RespawnLocation = spawn
 	player:SetAttribute("DirtPerBatch", Config.dirtPerBatch)
 	player:SetAttribute("BucketBatches", Config.bucketBatches)
@@ -96,6 +111,7 @@ local function equip(player)
 					tool:Destroy()
 				end
 				storage:Destroy()
+				economy.remove(player)
 				sifting.remove(player)
 				digging.remove(player)
 			end
@@ -125,6 +141,12 @@ siftInventory.OnInvoke = function(player)
 	}
 end
 siftInventory.Parent = script
+local economyInventory = Instance.new("BindableFunction")
+economyInventory.Name = "GetEconomyState"
+economyInventory.OnInvoke = function(player)
+	return economy.get(player).ledger
+end
+economyInventory.Parent = script
 Players.PlayerAdded:Connect(equip)
 for _, player in Players:GetPlayers() do
 	equip(player)

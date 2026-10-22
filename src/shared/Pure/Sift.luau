@@ -145,7 +145,8 @@ function Sift.new(config, dig, Batch, SkillCheck, rng)
 			end
 		end
 		modifier = math.max(pending.settings.siftMinimumValue, modifier)
-		local value = item.outcome.baseValue * item.outcome.sourceMultiplier * modifier
+		-- D-017/018: round each complete find, not the later sale total.
+		local value = math.round(item.outcome.baseValue * item.outcome.sourceMultiplier * modifier)
 		assert(finite(value) and value >= 0, "Sift: invalid completed value")
 		local find = table.freeze({
 			id = item.id,

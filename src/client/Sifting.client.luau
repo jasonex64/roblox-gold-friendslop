@@ -125,7 +125,7 @@ remote.OnClientEvent:Connect(function(result, view, find)
 	if result == "completed" then
 		assert(find, "Sifting: completion missing find")
 		reveal.Text = string.format(
-			"%s\nValue %.2f\n%.0f%%",
+			"%s\nValue $%.0f\n%.0f%%",
 			find.kind,
 			find.value,
 			find.skillMultiplier * 100

@@ -37,6 +37,25 @@ local function play(sift, grade)
 	end
 end
 return {
+	["ECON-1 completed finds round independently to nearest whole dollar with halves up"] = function(
+		t
+	)
+		for _, case in { { 13.2, 13 }, { 13.49, 13 }, { 13.5, 14 }, { 13.8, 14 }, { 0.4, 0 } } do
+			local sift, dig = setup()
+			local batch = table.clone(dig.state.batches.batch)
+			batch.outcome = { kind = "Fixture", baseValue = case[1], sourceMultiplier = 1 }
+			dig.state.batches.batch = batch
+			sift.start(10, "attempt", 0, 1)
+			-- good + good + miss = no net value change.
+			t.equal(sift.press(10.8, "attempt", 1), "good")
+			sift.step(12, true)
+			t.equal(sift.press(12.8, "attempt", 2), "good")
+			sift.step(14, true)
+			t.equal(sift.press(14.1, "attempt", 3), "miss")
+			sift.step(16, true)
+			t.equal(sift.outputs.batch.value, case[2])
+		end
+	end,
 	["SIFT-1 reserves space and excludes simultaneous digging"] = function(t)
 		local sift, dig = setup()
 		t.equal(sift.start(10, "attempt", 0, 1), "started")
