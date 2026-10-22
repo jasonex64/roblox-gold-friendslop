@@ -1,25 +1,381 @@
 --!strict
--- Client entry point. Boot line is what the Studio MCP smoke check looks for.
 local Players = game:GetService("Players")
-local remote = game:GetService("ReplicatedStorage"):WaitForChild("DigRequest")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local ContextActionService = game:GetService("ContextActionService")
+local UserInputService = game:GetService("UserInputService")
+local Theme = require(script.Theme)
+local Hud = require(ReplicatedStorage:WaitForChild("Shared").Pure.Hud)
+local Config = require(ReplicatedStorage.Shared.Config)
 local player = Players.LocalPlayer
+local status = ReplicatedStorage:WaitForChild("RunStatus")
+local actionRemote = ReplicatedStorage:WaitForChild("ActionRequest")
+local siftRemote = ReplicatedStorage:WaitForChild("SiftRequest")
+local economyRemote = ReplicatedStorage:WaitForChild("EconomyRequest")
+local runRemote = ReplicatedStorage:WaitForChild("RunRequest")
+local gui = Instance.new("ScreenGui")
+gui.Name = "GoldHUD"
+gui.ResetOnSpawn = false
+gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
+gui.DisplayOrder = 10
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = player:WaitForChild("PlayerGui")
+local root = Instance.new("Frame")
+root.Name = "Root"
+root.Size = UDim2.fromScale(1, 1)
+root.BackgroundTransparency = 1
+root.Parent = gui
+local function place(object, x, y, w, h)
+	object.Position = UDim2.fromOffset(x, y)
+	object.Size = UDim2.fromOffset(w, h)
+end
+local top = Instance.new("Frame")
+top.Name = "Top"
+top.BackgroundTransparency = 1
+top.Parent = root
+local function stat(name, color)
+	local box = Theme.surface(top, name, color)
+	Theme.gloss(box, color)
+	local title = Theme.text(box, "Title", name, 14, true)
+	title.Size = UDim2.new(1, -8, 0, 18)
+	title.Position = UDim2.fromOffset(4, 3)
+	local value = Theme.text(box, "Value", "...", 26, true)
+	value.Size = UDim2.new(1, -8, 1, -22)
+	value.Position = UDim2.fromOffset(4, 20)
+	return box, value
+end
+local haulBox, haul = stat("Crew Haul", Theme.gold)
+local cashBox, cash = stat("Run Cash", Theme.green)
+local timerBox, timer = stat("Waiting", Theme.cyan)
+local help = Theme.button(top, "Help", "?", Theme.purple)
+local info = Theme.surface(root, "Inventory", Theme.white)
+local inventory = Theme.text(info, "Counts", "Loading inventory...", 16, false)
+inventory.Size = UDim2.new(1, -16, 1, -6)
+inventory.Position = UDim2.fromOffset(8, 3)
+local feedback = Theme.text(root, "Feedback", "Bank → River → Buyer → Camp", 18, true)
+local dock = Theme.surface(root, "ActionDock", Theme.white)
+local hint = Theme.text(dock, "Hint", "Loading your next action...", 16, false)
+local primary = Theme.button(dock, "Primary", "Get ready!", Theme.green)
+local buy = Theme.button(dock, "Upgrade", "Shovel", Theme.gold)
+local helpPanel = Theme.surface(root, "Guide", Theme.white)
+helpPanel.Visible = true
+helpPanel.ZIndex = 5
+local helpTitle = Theme.text(helpPanel, "Title", "How to Strike Gold!", 27, true)
+local helpCopy = Theme.text(
+	helpPanel,
+	"Steps",
+	string.format(
+		"1. BANK: tap Dig or press E. Stay put until the batch is ready.\n2. RIVER: tap Sift, then hit each gold/green zone (tap or Space). Cancel trashes active dirt.\n3. BUYER: sell finished finds for Run Cash and Crew Haul.\n4. CAMP: a $%d temporary shovel makes digs %.1fs. Resets after this shift.\n\nAT THE BELL: finished finds sell automatically; raw dirt and incomplete sifts are discarded. Replay resets cash, inventory, upgrades and opening finds. No permanent rewards saved.",
+		Config.shovelUpgradePrice,
+		Config.upgradedDigSeconds
+	),
+	17,
+	false
+)
+local helpClose = Theme.button(helpPanel, "Close", "Let's Dig!", Theme.green)
+helpClose.Activated:Connect(function()
+	helpPanel.Visible = false
+end)
+help.Activated:Connect(function()
+	helpPanel.Visible = not helpPanel.Visible
+end)
+local siftPanel = Theme.surface(root, "Sift", Theme.white)
+siftPanel.Visible = false
+siftPanel.ZIndex = 3
+local siftTitle = Theme.text(siftPanel, "Title", "Sift for Gold!", 25, true)
+local grade = Theme.text(siftPanel, "Grade", "Gold: PERFECT • Green: GOOD", 14, false)
+local dial = Instance.new("Frame")
+dial.Name = "Dial"
+dial.BackgroundTransparency = 1
+dial.Parent = siftPanel
+local segments = {}
+-- Rendering resolution/angles are presentation, not skill-check tuning.
+for index = 1, 100 do
+	local angle = (index - 0.5) / 100 * math.pi * 2
+	local segment = Instance.new("Frame")
+	segment.AnchorPoint = Vector2.new(0.5, 0.5)
+	segment.Size = UDim2.new(0, 5, 0.1, 0)
+	segment.Position = UDim2.fromScale(0.5 + math.sin(angle) * 0.43, 0.5 - math.cos(angle) * 0.43)
+	segment.Rotation = angle * 180 / math.pi
+	segment.BorderSizePixel = 0
+	segment.Parent = dial
+	segments[index] = segment
+end
+local pointer = Instance.new("Frame")
+pointer.Name = "Pointer"
+pointer.Size = UDim2.fromScale(1, 1)
+pointer.BackgroundTransparency = 1
+pointer.Parent = dial
+local needle = Instance.new("Frame")
+needle.AnchorPoint = Vector2.new(0.5, 1)
+needle.Position = UDim2.fromScale(0.5, 0.5)
+needle.Size = UDim2.new(0, 4, 0.43, 0)
+needle.BackgroundColor3 = Color3.fromRGB(248, 64, 101)
+needle.BorderSizePixel = 0
+Theme.border(needle, 1)
+needle.Parent = pointer
+local hit = Theme.button(siftPanel, "Hit", "HIT! / Space", Theme.green)
+local cancel = Theme.button(siftPanel, "Cancel", "Cancel / Q", Theme.purple)
+local results = Theme.surface(root, "Results", Theme.white)
+results.Visible = false
+results.ZIndex = 4
+local resultTitle = Theme.text(results, "Title", "Shift Complete!", 30, true)
+local resultTile = Theme.surface(results, "HaulTile", Theme.gold)
+Theme.gloss(resultTile, Theme.gold)
+local resultHaul = Theme.text(resultTile, "Haul", "Crew Haul", 37, true)
+resultHaul.Size = UDim2.new(1, -16, 1, -8)
+resultHaul.Position = UDim2.fromOffset(8, 4)
+local resultCopy = Theme.text(
+	results,
+	"ResetRules",
+	"Finds sold. Unprocessed dirt discarded.\nReplay resets cash, inventory, upgrades and opening finds.\nNo permanent rewards saved.",
+	16,
+	false
+)
+local replay = Theme.button(results, "Replay", "Play Again!", Theme.green)
+replay.Activated:Connect(function()
+	runRemote:FireServer("replay", status:GetAttribute("RunId"))
+end)
+local current = nil
+local sent = false
+local lastRunId = nil
+local function layout()
+	local w, h = root.AbsoluteSize.X, root.AbsoluteSize.Y
+	local compact = h < 480
+	local topWidth = math.min(w - 24, 700)
+	place(top, (w - topWidth) / 2, 8, topWidth, 58)
+	local cell = (topWidth - 68) / 3
+	local statHeight = if compact then 48 else 56
+	place(haulBox, 0, 0, cell, statHeight)
+	place(cashBox, cell + 8, 0, cell, statHeight)
+	place(timerBox, (cell + 8) * 2, 0, cell, statHeight)
+	place(help, topWidth - 44, 2, 44, 44)
+	place(
+		info,
+		(w - math.min(w - 32, 480)) / 2,
+		if compact then 64 else 74,
+		math.min(w - 32, 480),
+		28
+	)
+	place(feedback, w * 0.1, if compact then 96 else 110, w * 0.8, if compact then 24 else 34)
+	local dw = math.min(w - 32, 500)
+	place(dock, (w - dw) / 2, h - (if compact then 182 else 200), dw, 112)
+	place(hint, 10, 5, dw - 20, 48)
+	place(primary, 10, 58, dw - 20, 44)
+	place(buy, dw - 155, 58, 145, 44)
+	local sw = math.min(w - 32, 410)
+	local sh = if compact then 202 else 304
+	place(siftPanel, (w - sw) / 2, math.min(math.max(96, (h - sh) / 2), h - sh - 6), sw, sh)
+	place(siftTitle, 8, 6, sw - 16, 30)
+	if compact then
+		place(dial, 12, 44, 132, 132)
+		place(grade, 152, 38, sw - 164, 48)
+		place(hit, 156, 92, sw - 170, 44)
+		place(cancel, 156, 148, sw - 170, 44)
+	else
+		place(dial, (sw - 166) / 2, 40, 166, 166)
+		place(grade, 8, 209, sw - 16, 34)
+		place(hit, 12, 250, (sw - 36) * 0.6, 44)
+		place(cancel, 24 + (sw - 36) * 0.6, 250, (sw - 36) * 0.4, 44)
+	end
+	local mw = math.min(w - 28, 510)
+	local mh = math.min(h - 22, 370)
+	place(helpPanel, (w - mw) / 2, (h - mh) / 2, mw, mh)
+	place(helpTitle, 12, 6, mw - 24, 38)
+	place(helpCopy, 16, 48, mw - 32, mh - 114)
+	place(helpClose, 18, mh - 57, mw - 36, 44)
+	local rh = math.min(h - 22, 330)
+	place(results, (w - mw) / 2, (h - rh) / 2, mw, rh)
+	place(resultTitle, 10, 6, mw - 20, 38)
+	place(resultTile, 18, 50, mw - 36, 75)
+	place(resultCopy, 18, 136, mw - 36, rh - 203)
+	place(replay, 18, rh - 56, mw - 36, 44)
+end
+root:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
+layout()
+local function feedbackCode(code, amount)
+	if code == "sold" then
+		assert(type(amount) == "number", "HUD: sale amount missing")
+		feedback.Text = string.format("Sold finds for $%d!", amount)
+	else
+		feedback.Text = Hud.message(code)
+	end
+end
+local function activate()
+	if helpPanel.Visible then
+		helpPanel.Visible = false
+	end
+	if current then
+		if not current.graded and not sent then
+			sent = true
+			siftRemote:FireServer("press", current.id, current.index)
+		end
+	else
+		local action = player:GetAttribute("HudAction")
+		if action and action ~= "none" and action ~= "hit" then
+			actionRemote:FireServer(action)
+		else
+			feedback.Text = hint.Text
+		end
+	end
+end
+primary.Activated:Connect(activate)
+hit.Activated:Connect(activate)
+cancel.Activated:Connect(function()
+	actionRemote:FireServer("cancel")
+end)
+buy.Activated:Connect(function()
+	actionRemote:FireServer("buy")
+end)
+local actions = {
+	dig = "Dig Dirt",
+	sift = "Sift Dirt",
+	sell = "Sell All",
+	buy = "Buy Shovel",
+	cancel = "Cancel Dig",
+	hit = "Hit the Zone",
+	none = "Follow the Prompt",
+}
+local function refresh()
+	hit.Caption.Text = if UserInputService.TouchEnabled then "HIT!" else "HIT! / Space"
+	cancel.Caption.Text = if UserInputService.TouchEnabled then "Cancel" else "Cancel / Q"
+	local phase = status:GetAttribute("Phase")
+	local seconds = status:GetAttribute("RemainingSeconds")
+	if phase and seconds ~= nil then
+		timerBox.Title.Text = phase:gsub("^%l", string.upper)
+		timer.Text = string.format("%02d:%02d", math.floor(seconds / 60), seconds % 60)
+	end
+	local money, total = player:GetAttribute("RunCash"), player:GetAttribute("CrewHaul")
+	if money ~= nil and total ~= nil then
+		cash.Text = string.format("$%d", money)
+		haul.Text = string.format("$%d", total)
+	end
+	local carried, finds =
+		player:GetAttribute("CarriedBatches"), player:GetAttribute("CompletedFinds")
+	if carried ~= nil and finds ~= nil then
+		inventory.Text = string.format(
+			"Dirt %d/%d  •  Finds %d/%d",
+			carried,
+			Config.bucketBatches,
+			finds,
+			Config.outputCapacity
+		)
+	end
+	local action, nextHint = player:GetAttribute("HudAction"), player:GetAttribute("HudHint")
+	if action and nextHint then
+		assert(actions[action], "HUD: unknown action " .. action)
+		hint.Text = nextHint
+		primary.Caption.Text = actions[action]
+			.. (if UserInputService.TouchEnabled then "" else " / E")
+	end
+	buy.Visible = player:GetAttribute("Station") == "Camp" and phase == "running"
+	buy.Caption.Text = if player:GetAttribute("ShovelUpgraded")
+		then "Shovel Owned"
+		else string.format("Shovel $%d", Config.shovelUpgradePrice)
+	primary.Size = UDim2.new(1, if buy.Visible then -175 else -20, 0, 44)
+	dock.Visible = current == nil and phase ~= "results"
+	siftPanel.Visible = current ~= nil and phase == "running"
+	local result = status:GetAttribute("ResultHaul")
+	results.Visible = phase == "results" and result ~= nil
+	if results.Visible then
+		helpPanel.Visible = false
+		resultHaul.Text = string.format("Crew Haul\n$%d", result)
+	end
+	local id = status:GetAttribute("RunId")
+	if id and id ~= lastRunId then
+		lastRunId = id
+		current = nil
+		sent = false
+		feedback.Text =
+			"Bank → River → Buyer → Camp. Finished finds sell at the bell; dirt is discarded."
+	end
+end
+player.AttributeChanged:Connect(refresh)
+status.AttributeChanged:Connect(refresh)
+UserInputService:GetPropertyChangedSignal("TouchEnabled"):Connect(refresh)
+refresh()
+actionRemote.OnClientEvent:Connect(feedbackCode)
+economyRemote.OnClientEvent:Connect(feedbackCode)
+runRemote.OnClientEvent:Connect(feedbackCode)
+ReplicatedStorage:WaitForChild("DigRequest").OnClientEvent:Connect(feedbackCode)
+siftRemote.OnClientEvent:Connect(function(code, view, find)
+	if not current or not view or current.id ~= view.id or current.index ~= view.index then
+		sent = false
+	end
+	current = view
+	feedbackCode(code)
+	if view then
+		siftTitle.Text = string.format("Sift! Check %d / %d", view.index, view.total)
+		grade.Text = if view.graded then Hud.message(code) else "GOLD: perfect\nGREEN: good"
+		local side = (view.zoneWidth - view.perfectWidth) / 2
+		for index, segment in segments do
+			local position = (index - 0.5) / #segments
+			local good = position >= view.zoneStart and position <= view.zoneStart + view.zoneWidth
+			local perfect = position >= view.zoneStart + side
+				and position <= view.zoneStart + side + view.perfectWidth
+			segment.BackgroundColor3 = if perfect
+				then Theme.gold
+				elseif good then Theme.green
+				else Color3.fromRGB(207, 220, 229)
+		end
+	end
+	if code == "completed" then
+		assert(find, "HUD: completion missing find")
+		feedback.Text =
+			string.format("%s! $%d • Take your find to the Buyer", find.kind, find.value)
+	end
+	refresh()
+end)
+RunService.RenderStepped:Connect(function()
+	if current then
+		pointer.Rotation = math.clamp(
+			(workspace:GetServerTimeNow() - current.startedAt) / current.duration,
+			0,
+			1
+		) * 360
+	end
+end)
+ContextActionService:BindAction("CampAction", function(_, state)
+	if state == Enum.UserInputState.Begin then
+		activate()
+	end
+	return Enum.ContextActionResult.Sink
+end, false, Enum.KeyCode.E)
+ContextActionService:BindAction("SiftHit", function(_, state)
+	if not current then
+		return Enum.ContextActionResult.Pass
+	end
+	if state == Enum.UserInputState.Begin then
+		activate()
+	end
+	return Enum.ContextActionResult.Sink
+end, false, Enum.KeyCode.Space)
+ContextActionService:BindAction("CancelAction", function(_, state)
+	if state == Enum.UserInputState.Begin then
+		actionRemote:FireServer("cancel")
+	end
+	return Enum.ContextActionResult.Sink
+end, false, Enum.KeyCode.Q)
 local watched = {}
 local function watch(tool)
-	if not tool:IsA("Tool") or tool.Name ~= "Shovel" or watched[tool] then
+	if not tool:IsA("Tool") or watched[tool] then
+		return
+	end
+	if tool.Name ~= "Shovel" and tool.Name ~= "Pan" then
 		return
 	end
 	watched[tool] = true
 	tool.Activated:Connect(function()
-		remote:FireServer("start")
-	end)
-	tool.Deactivated:Connect(function()
-		remote:FireServer("cancel")
-	end)
-	tool.Unequipped:Connect(function()
-		remote:FireServer("cancel")
+		if tool.Name == "Pan" and current then
+			activate()
+		else
+			actionRemote:FireServer(if tool.Name == "Pan" then "sift" else "dig")
+		end
 	end)
 end
 local function characterAdded(character)
+	current = nil
+	sent = false
 	local backpack = player:WaitForChild("Backpack")
 	backpack.ChildAdded:Connect(watch)
 	character.ChildAdded:Connect(watch)
@@ -29,10 +385,10 @@ local function characterAdded(character)
 	for _, tool in character:GetChildren() do
 		watch(tool)
 	end
+	refresh()
 end
 player.CharacterAdded:Connect(characterAdded)
 if player.Character then
 	characterAdded(player.Character)
 end
-
-print("[client] boot ok", Players.LocalPlayer.Name)
+print("[client] boot ok", player.Name)
