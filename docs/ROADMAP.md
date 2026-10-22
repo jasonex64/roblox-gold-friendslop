@@ -47,7 +47,7 @@ Pure-logic tickets (T-014..T-017) need only T-001, so up to four agents can work
 | T-007 | Sifting with skill check | T-006, T-015 |
 | T-008 | Selling and the tool purchase | T-005, T-014, T-016 |
 | T-009 | End of shift and replay | T-008, T-017 |
-| T-010 | Controls and HUD | T-009 |
+| T-010 | Controls and HUD | T-007, T-009 |
 | T-011 | Gate A validation | T-004, T-010 |
 
 ### Exit criteria
