@@ -72,6 +72,20 @@ def case_claim_branch(repo):
     return code, out
 
 
+def case_word_cap(repo):
+    t = repo / "docs" / "tickets" / "T-005.md"
+    t.write_text(t.read_text(encoding="utf-8").replace("## Log", "word " * 301 + "\n\n## Log"), encoding="utf-8")
+    return run(repo, "tools/board.py", "--local")
+
+
+def case_word_cap_done(repo):
+    t = repo / "docs" / "tickets" / "T-005.md"
+    text = t.read_text(encoding="utf-8").replace("## Log", "word " * 301 + "\n\n## Log")
+    text = text.replace("status: todo", "status: done").replace("owner:\n", "owner: a\n").replace("agent:\n", "agent: b\n").replace("reviewer:\n", "reviewer: c\n")
+    t.write_text(text, encoding="utf-8")
+    return run(repo, "tools/board.py", "--local")
+
+
 def case_cited_decision(repo):
     return run(repo, "tools/numbers.py")
 
@@ -94,6 +108,8 @@ def case_provisional_ok(repo):
 
 CASES = [  # (id, function, Config.luau or None, expected exit code)
     ("BRD-1 pushed T-###-* branch shows as a claim", case_claim_branch, None, 0),
+    ("BRD-2 todo ticket over 300 words above Log fails", case_word_cap, None, 1),
+    ("BRD-3 done ticket is exempt from the word cap", case_word_cap_done, None, 0),
     ("NUM-1 value citing an existing D-### passes", case_cited_decision,
      "return {\n\tShiftSeconds = 600, -- D-020\n}\n", 0),
     ("NUM-2 value with no citation fails", case_uncited,

@@ -12,6 +12,7 @@ from pathlib import Path
 
 TICKET_DIR = Path(__file__).resolve().parent.parent / "docs" / "tickets"
 STATUSES = ["todo", "doing", "blocked", "review", "done"]
+WORD_CAP = 300  # words above "## Log" for tickets not yet done (D-012)
 REQUIRED = ["id", "title", "milestone", "status", "owner", "agent",
             "reviewer", "depends_on", "blocked_on"]
 
@@ -31,6 +32,7 @@ def parse(path):
     if not re.fullmatch(r"\[(\s*T-\d{3}\s*(,\s*T-\d{3}\s*)*)?\]", deps):
         raise ValueError(f"depends_on must look like [T-001, T-002], got {deps!r}")
     fields["depends_on"] = re.findall(r"T-\d{3}", deps)
+    fields["words"] = len(text.split("\n## Log", 1)[0].split())
     return fields
 
 
@@ -52,6 +54,8 @@ def check(t, path, all_ids):
             errs.append("reviewer required for review/done")
         elif t["reviewer"] == t["owner"]:
             errs.append("reviewer must differ from owner")
+    if t["status"] != "done" and t["words"] > WORD_CAP:
+        errs.append(f"{t['words']} words above ## Log, cap is {WORD_CAP} (D-012); link DESIGN.md sections instead of restating them")
     for d in t["depends_on"]:
         if d not in all_ids:
             errs.append(f"depends_on {d} does not exist")

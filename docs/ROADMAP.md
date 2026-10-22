@@ -7,6 +7,8 @@ Exit criteria: all three of us can clone, sync code into Studio, run tests, and 
 - T-001 Pick and set up the Studio <-> git sync and test runner
 
 - T-003 Turn MVP design into M1 roadmap and tickets (draft planning; owner requested)
+- T-012 Unblock async agent work in the workflow rules
+- T-013 Split M1 so several agents can work in parallel
 
 ## M1 — Smallest playable manual shift (DRAFT: Gate A only)
 
@@ -18,11 +20,10 @@ This boundary is a proposal under T-003 Q10: Gate A is the document's first play
 
 ### Preconditions
 
-- Finish M0 and its independent review before starting M1 implementation (WORKFLOW section 6); T-001 is still open. Drafting these tickets does not start M1.
-- Review/merge T-003, then T-004 must resolve only the remaining Gate A scope/contract and skill-check questions and obtain the applicable human-authored numeric decisions in docs/DECISIONS.md. The attached design's proposed values are not approved decisions.
-- No dates, team capacity, workstream owners, toolchain choices, or numeric defaults are invented. Unassigned ticket owners stay blank; T-004 is explicitly an owner decision task.
+- M0 done and reviewed (T-001, T-012, T-013).
+- Implementation does not wait on T-004: missing numbers use DESIGN.md's proposal marked PROVISIONAL (D-011). T-004 must finish before M1 closes (`numbers.py --strict`).
 
-### Included, subject to T-004 approval
+### Included (numbers PROVISIONAL until T-004)
 
 - Direct entry into the run place and placeholder river/camp/bank/buyer layout, as section 13 permits for validation.
 - Starter loadout, manual dig/carry/sift/reveal, server-owned batch identity/outcomes, capacity handling, and mutually exclusive actions.
@@ -32,22 +33,26 @@ This boundary is a proposal under T-003 Q10: Gate A is the document's first play
 
 ### Dependency order and tickets
 
-| Ticket | Player/owner outcome | Depends on |
-|---|---|---|
-| T-004 | Confirm the Gate A boundary and approve required decisions | T-003 |
-| T-005 | Enter the run place with starter loadout and authoritative clock | T-001, T-004 |
-| T-006 | Dig/carry valid batches without duplication or rerolls | T-005 |
-| T-007 | Manually process batches into completed finds | T-006 |
-| T-008 | Sell and buy the chosen temporary tool upgrade | T-007 |
-| T-009 | Finish, settle run-local output, and reset | T-008 |
-| T-010 | Use contextual controls, HUD, and first-run prompts | T-009 |
-| T-011 | Produce Gate A playability and integrity evidence | T-010 |
+Pure-logic tickets (T-014..T-017) need only T-001, so up to four agents can work at once. Server wiring tickets consume them.
 
-T-004 is a human decision task. Each implementation ticket carries a source reference, data contract, exact checks, and a Numbers used section pointing to the unresolved inventory. No gameplay implementation begins with missing decisions; stop that part and log it under WORKFLOW.
+| Ticket | Outcome | Depends on |
+|---|---|---|
+| T-004 | Humans approve scope, skill-check rules, provisional numbers | T-003 |
+| T-014 | Pure batch rules | T-001 |
+| T-015 | Pure skill-check grading | T-001 |
+| T-016 | Pure ledger (sell, buy, haul) | T-001 |
+| T-017 | Pure run state machine | T-001 |
+| T-005 | Run place and server session | T-001, T-017 |
+| T-006 | Digging and carried batches | T-005, T-014 |
+| T-007 | Sifting with skill check | T-006, T-015 |
+| T-008 | Selling and the tool purchase | T-005, T-014, T-016 |
+| T-009 | End of shift and replay | T-008, T-017 |
+| T-010 | Controls and HUD | T-009 |
+| T-011 | Gate A validation | T-004, T-010 |
 
 ### Exit criteria
 
-- Every included ticket is done with independent evidence, and the M1 review is merged with zero open blocking findings.
+- Every included ticket is done with independent evidence, `python tools/numbers.py --strict` exits 0, and the M1 review is merged with zero open blocking findings.
 - Using the approved player count, full shift duration, device/input matrix, and tuning, a fresh build completes the entire manual journey through an upgrade, bell, result, and restart (T-011 GATE-A-1).
 - Rejected/forged actions, full inventory, cancellation, exact-end completion, repeated sale/purchase/result requests, and reset cannot create extra inventory/cash/haul; spending does not reduce cumulative haul (GATE-A-2).
 - Applicable usability/timing checks use only human-approved thresholds; observed outcomes and open issues are recorded separately from design hypotheses (GATE-A-3).
