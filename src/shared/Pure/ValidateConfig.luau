@@ -13,6 +13,9 @@ local function validate(config: any)
 			"dirtPerBatch",
 			"bucketBatches",
 			"outputCapacity",
+			"openingBatches",
+			"openingValue",
+			"ordinaryMultiplier",
 		}
 	do
 		local value = config[key]
@@ -20,6 +23,27 @@ local function validate(config: any)
 			type(value) == "number" and value > 0 and value < math.huge,
 			"Config." .. key .. " must be positive and finite"
 		)
+	end
+	for _, key in { "loot", "crates" } do
+		assert(type(config[key]) == "table" and #config[key] > 0, "Config." .. key .. " required")
+		for _, entry in config[key] do
+			assert(
+				type(entry.weight) == "number" and entry.weight > 0 and entry.weight < math.huge,
+				"Config." .. key .. ".weight invalid"
+			)
+			if key == "loot" then
+				assert(
+					type(entry.kind) == "string" and entry.kind ~= "",
+					"Config.loot.kind required"
+				)
+			end
+			if entry.kind ~= "Mystery Crate" then
+				assert(
+					type(entry.value) == "number" and entry.value >= 0 and entry.value < math.huge,
+					"Config." .. key .. ".value invalid"
+				)
+			end
+		end
 	end
 	for _, key in { "dirtPerBatch", "bucketBatches", "outputCapacity" } do
 		assert(config[key] % 1 == 0, "Config." .. key .. " must be an integer")

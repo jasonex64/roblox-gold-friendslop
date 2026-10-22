@@ -33,18 +33,13 @@ export type Config = {
 
 -- The caller retains and commits the returned state atomically. Raw queued or
 -- processing batches occupy capacity until completed. Transfers are out of scope.
-function Batch.create(
-	state: State,
-	request: Request,
-	config: Config,
-	rng: (Request) -> Outcome
-): (State, string?)
+function Batch.canCreate(state: State, request: Request, config: Config): string?
 	if not config.digPhases[state.phase] then
-		return state, "wrong_phase"
+		return "wrong_phase"
 	end
 	-- Positive comparisons also reject NaN rather than accidentally admitting it.
 	if not (request.distance >= 0 and request.distance <= config.maxDistance) then
-		return state, "out_of_range"
+		return "out_of_range"
 	end
 	local carried = 0
 	for _, item in state.batches do
@@ -56,22 +51,35 @@ function Batch.create(
 		end
 	end
 	if carried >= config.capacity then
-		return state, "full_capacity"
+		return "full_capacity"
 	end
 	local last = state.lastDigAt[request.digger]
 	if not (request.now > -math.huge and request.now < math.huge) then
-		return state, "invalid_time"
+		return "invalid_time"
 	end
 	if last ~= nil and not (request.now - last >= config.digInterval) then
-		return state, "over_rate"
+		return "over_rate"
 	end
 	if state.batches[request.id] ~= nil then
-		return state, "duplicate_id"
+		return "duplicate_id"
 	end
 	assert(
 		request.id ~= "" and request.source ~= "" and request.digger ~= "",
 		"Batch.create: missing identity"
 	)
+	return nil
+end
+
+function Batch.create(
+	state: State,
+	request: Request,
+	config: Config,
+	rng: (Request) -> Outcome
+): (State, string?)
+	local reason = Batch.canCreate(state, request, config)
+	if reason then
+		return state, reason
+	end
 	-- Snapshot even if the resolver reuses its result table. Nested crate results
 	-- are resolved by the caller now, stored in crateKind/crateValue, never on reveal.
 	local outcome = table.freeze(table.clone(rng(table.freeze(table.clone(request)))))
