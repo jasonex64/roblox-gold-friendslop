@@ -2,7 +2,7 @@
 -- Placeholder visual geometry, not interaction distances or production tuning.
 local Camp = {}
 
-function Camp.build()
+function Camp.build(config)
 	assert(not workspace:FindFirstChild("RiverCamp"), "RiverCamp already exists")
 	local model = Instance.new("Model")
 	model.Name = "RiverCamp"
@@ -36,6 +36,8 @@ function Camp.build()
 	end
 	station("Camp", Vector3.new(0, 0.1, 24), Color3.fromRGB(180, 151, 101), "CAMP • START")
 	station("Bank", Vector3.new(-32, 0.1, -16), Color3.fromRGB(165, 111, 62), "BANK • DIG")
+	model.Bank:SetAttribute("DigSource", "Bank")
+	model.Bank:SetAttribute("DirtMultiplier", config.ordinaryMultiplier)
 	station("River", Vector3.new(0, 0.1, -24), Color3.fromRGB(61, 158, 191), "RIVER • SIFT")
 	station("Buyer", Vector3.new(32, 0.1, -16), Color3.fromRGB(207, 167, 60), "BUYER • SELL")
 	local spawn = Instance.new("SpawnLocation")
