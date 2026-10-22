@@ -197,10 +197,6 @@ local function activate()
 	end
 	if current then
 		if not current.graded and not sent then
-			if workspace:GetServerTimeNow() < current.startedAt then
-				feedback.Text = "Get ready — the needle starts shortly!"
-				return
-			end
 			sent = true
 			siftRemote:FireServer("press", current.id, current.index)
 		end
@@ -325,11 +321,6 @@ siftRemote.OnClientEvent:Connect(function(code, view, find)
 end)
 RunService.RenderStepped:Connect(function()
 	if current then
-		if not current.graded then
-			grade.Text = if workspace:GetServerTimeNow() < current.startedAt
-				then "Get ready..."
-				else "GOLD: perfect\nGREEN: good"
-		end
 		pointer.Rotation = math.clamp(
 			(workspace:GetServerTimeNow() - current.startedAt) / current.duration,
 			0,

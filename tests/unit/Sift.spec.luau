@@ -40,16 +40,13 @@ local function play(sift, grade)
 	end
 end
 return {
-	["SIFT preview buffer rejects early hits without consuming checks and preserves timing"] = function(
-		t
-	)
+	["SIFT consecutive sweeps start immediately with separated targets"] = function(t)
 		local sift = setup()
 		sift.start(10, "attempt", 0, 1)
 		local pending = sift.pending
-		t.equal(pending.endsAt, 17.5)
+		t.equal(pending.endsAt, 16)
 		for index, check in pending.checks do
-			local previewStart = check.startedAt - Config.siftPreviewSeconds
-			t.equal(sift.step(previewStart, true), "sifting")
+			t.equal(sift.step(check.startedAt, true), "sifting")
 			t.equal(sift.press(check.startedAt - 0.001, "attempt", index), "outside_check")
 			t.equal(check.graded, false)
 			t.equal(pressGrade(sift, index, "perfect"), "perfect")
@@ -61,7 +58,7 @@ return {
 							prior.startedAt
 							+ (prior.zoneStart + prior.zoneWidth / 2) / prior.needleSpeed
 						),
-					0.5
+					0
 				)
 				t.equal(
 					check.zoneStart >= prior.zoneStart + prior.zoneWidth
@@ -117,7 +114,7 @@ return {
 		local sift, _, config = setup()
 		sift.start(10, "attempt", 1, 2)
 		t.equal(sift.pending.duration, 1)
-		t.equal(sift.pending.endsAt, 14.5)
+		t.equal(sift.pending.endsAt, 13)
 		t.equal(sift.pending.checks[1].zoneWidth, 0.3125)
 		t.equal(sift.pending.checks[1].perfectWidth, 0.0625)
 		config.siftPerfectBonus = 9
@@ -173,7 +170,7 @@ return {
 			t.equal(next(sift.outputs), nil)
 		end
 	end,
-	["SIFT-4 accepted press advances immediately; stale and preview inputs grant nothing"] = function(
+	["SIFT-4 accepted press advances immediately; stale and premature inputs grant nothing"] = function(
 		t
 	)
 		local sift = setup()

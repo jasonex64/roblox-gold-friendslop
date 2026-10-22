@@ -14,7 +14,6 @@ local function validate(config: any)
 			"siftSeconds",
 			"siftChecks",
 			"siftSweepSeconds",
-			"siftPreviewSeconds",
 			"siftPerfectWidth",
 			"siftGoodWidth",
 			"siftUpgradeWidth",
@@ -63,8 +62,7 @@ local function validate(config: any)
 	)
 	assert(config.siftMinimumValue <= 1, "Config.siftMinimumValue must not exceed base value")
 	assert(
-		config.siftSeconds
-			== config.siftChecks * (config.siftSweepSeconds + config.siftPreviewSeconds),
+		config.siftSeconds == config.siftChecks * config.siftSweepSeconds,
 		"Config.siftSeconds must match checks"
 	)
 	for _, key in

@@ -46,15 +46,13 @@ function Sift.new(config, dig, Batch, SkillCheck, rng)
 		local starterWidth = settings.siftPerfectWidth + 2 * settings.siftGoodWidth
 		scale = math.min(scale, 1 / starterWidth)
 		local duration = settings.siftSweepSeconds / rate
-		local interval = duration + settings.siftPreviewSeconds
 		local checks = {}
 		for index = 1, settings.siftChecks do
-			checks[index] =
-				SkillCheck.start(now + settings.siftPreviewSeconds + (index - 1) * interval, {
-					zoneWidth = starterWidth * scale,
-					perfectWidth = settings.siftPerfectWidth * scale,
-					needleSpeed = 1 / duration,
-				}, rng, checks[index - 1])
+			checks[index] = SkillCheck.start(now + (index - 1) * duration, {
+				zoneWidth = starterWidth * scale,
+				perfectWidth = settings.siftPerfectWidth * scale,
+				needleSpeed = 1 / duration,
+			}, rng, checks[index - 1])
 		end
 		local batches = table.clone(dig.state.batches)
 		batches[selected.id] = Batch.transition(selected, "processing")
@@ -68,7 +66,7 @@ function Sift.new(config, dig, Batch, SkillCheck, rng)
 			checks = checks,
 			index = 1,
 			startedAt = now,
-			endsAt = now + settings.siftChecks * interval,
+			endsAt = now + settings.siftChecks * duration,
 			duration = duration,
 			rate = rate,
 			settings = settings,
@@ -106,7 +104,7 @@ function Sift.new(config, dig, Batch, SkillCheck, rng)
 		end
 		local result = SkillCheck.grade(check, now)
 		pending.results[index] = result
-		-- D-021: accepted hits resolve immediately; keep the next preview intact.
+		-- D-021: accepted hits resolve immediately; the next sweep starts now.
 		local saved = check.startedAt + pending.duration - now
 		for nextIndex = index + 1, #pending.checks do
 			pending.checks[nextIndex].startedAt -= saved
