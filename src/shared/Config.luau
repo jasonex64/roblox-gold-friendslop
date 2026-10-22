@@ -6,7 +6,7 @@ return table.freeze({
 	digSeconds = 1, -- PROVISIONAL DESIGN §5
 	shovelUpgradePrice = 50, -- D-018
 	upgradedDigSeconds = 0.8, -- D-018
-	siftSeconds = 6, -- D-015
+	siftSeconds = 6, -- D-022
 	siftChecks = 3, -- D-015
 	siftSweepSeconds = 2, -- D-015
 	siftPerfectWidth = 0.05, -- D-016

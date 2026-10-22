@@ -53,6 +53,15 @@ runRemote.OnServerEvent:Connect(function(player, ...)
 	runRemote:FireClient(player, shift.request(player, ...))
 end)
 runRemote.Parent = ReplicatedStorage
+local interaction =
+	require(script.Interaction).new(Config, session, workspace.RiverCamp, digging, sifting, economy)
+local actionRemote = Instance.new("RemoteEvent")
+actionRemote.Name = "ActionRequest"
+actionRemote.OnServerEvent:Connect(function(player, ...)
+	local result, amount = interaction.request(player, ...)
+	actionRemote:FireClient(player, result, amount)
+end)
+actionRemote.Parent = ReplicatedStorage
 
 -- Server-only gate for production handlers added by subsequent tickets.
 local gate = Instance.new("BindableFunction")
@@ -172,6 +181,9 @@ RunService.Heartbeat:Connect(function()
 	if session.accepts() then
 		digging.step()
 		sifting.step()
+	end
+	for _, player in players do
+		interaction.publish(player)
 	end
 end)
 print("[server] boot ok")

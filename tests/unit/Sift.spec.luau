@@ -26,17 +26,49 @@ local function setup(crate)
 		return draws
 	end
 end
+local function pressGrade(sift, index, grade)
+	local check = sift.pending.checks[index]
+	local position = if grade == "perfect"
+		then check.zoneStart + check.zoneWidth / 2
+		elseif grade == "good" then check.zoneStart + (check.zoneWidth - check.perfectWidth) / 4
+		else (if check.zoneStart > 0 then 0 else (1 + check.zoneWidth) / 2)
+	return sift.press(check.startedAt + position / check.needleSpeed, "attempt", index)
+end
 local function play(sift, grade)
 	for index = 1, 3 do
-		local check = sift.pending.checks[index]
-		local position = if grade == "perfect" then 0.5 elseif grade == "good" then 0.4 else 0.1
-		assert(
-			sift.press(check.startedAt + position / check.needleSpeed, "attempt", index) == grade
-		)
-		sift.step(check.startedAt + 2, true)
+		assert(pressGrade(sift, index, grade) == grade)
 	end
 end
 return {
+	["SIFT consecutive sweeps start immediately with separated targets"] = function(t)
+		local sift = setup()
+		sift.start(10, "attempt", 0, 1)
+		local pending = sift.pending
+		t.equal(pending.endsAt, 16)
+		for index, check in pending.checks do
+			t.equal(sift.step(check.startedAt, true), "sifting")
+			t.equal(sift.press(check.startedAt - 0.001, "attempt", index), "outside_check")
+			t.equal(check.graded, false)
+			t.equal(pressGrade(sift, index, "perfect"), "perfect")
+			if index > 1 then
+				local prior = pending.checks[index - 1]
+				t.equal(
+					check.startedAt
+						- (
+							prior.startedAt
+							+ (prior.zoneStart + prior.zoneWidth / 2) / prior.needleSpeed
+						),
+					0
+				)
+				t.equal(
+					check.zoneStart >= prior.zoneStart + prior.zoneWidth
+						or check.zoneStart + check.zoneWidth <= prior.zoneStart,
+					true
+				)
+			end
+		end
+		t.equal(sift.pending, nil)
+	end,
 	["ECON-1 completed finds round independently to nearest whole dollar with halves up"] = function(
 		t
 	)
@@ -47,12 +79,9 @@ return {
 			dig.state.batches.batch = batch
 			sift.start(10, "attempt", 0, 1)
 			-- good + good + miss = no net value change.
-			t.equal(sift.press(10.8, "attempt", 1), "good")
-			sift.step(12, true)
-			t.equal(sift.press(12.8, "attempt", 2), "good")
-			sift.step(14, true)
-			t.equal(sift.press(14.1, "attempt", 3), "miss")
-			sift.step(16, true)
+			t.equal(pressGrade(sift, 1, "good"), "good")
+			t.equal(pressGrade(sift, 2, "good"), "good")
+			t.equal(pressGrade(sift, 3, "miss"), "miss")
 			t.equal(sift.outputs.batch.value, case[2])
 		end
 	end,
@@ -119,7 +148,7 @@ return {
 			spare.id = "spare"
 			dig.state.batches.spare = spare
 			sift.start(10, "attempt", 0, 1)
-			sift.step(10 + (index - 1) * 2, true)
+			sift.step(sift.pending.checks[index].startedAt, true)
 			t.equal(sift.cancel(), "cancelled")
 			t.equal(sift.cancel(), "idle")
 			t.equal(dig.state.batches.batch, nil)
@@ -141,17 +170,21 @@ return {
 			t.equal(next(sift.outputs), nil)
 		end
 	end,
-	["SIFT-4 press cannot complete early; stale and repeated inputs grant nothing"] = function(t)
+	["SIFT-4 accepted press advances immediately; stale and premature inputs grant nothing"] = function(
+		t
+	)
 		local sift = setup()
 		sift.start(10, "attempt", 0, 1)
 		t.equal(sift.press(11, "forged", 1), "stale_check")
 		t.equal(sift.press(11, "attempt", 2), "stale_check")
 		t.equal(sift.press(9, "attempt", 1), "outside_check")
-		t.equal(sift.press(11, "attempt", 1), "perfect")
-		t.equal(sift.press(11, "attempt", 1), "already_graded")
+		t.equal(pressGrade(sift, 1, "perfect"), "perfect")
+		t.equal(pressGrade(sift, 1, "perfect"), "stale_check")
+		t.equal(sift.pending.index, 2)
+		t.equal(sift.press(sift.pending.checks[2].startedAt - 0.001, "attempt", 2), "outside_check")
 		t.equal(next(sift.outputs), nil)
 		t.equal(sift.step(11.99, true), "sifting")
-		t.equal(sift.press(12, "attempt", 1), "outside_check")
+		t.equal(sift.press(12.5, "attempt", 1), "stale_check")
 	end,
 	["SIFT-5 perfect good miss and timeout apply approved additive modifiers"] = function(t)
 		for _, case in { { "perfect", 1.6 }, { "good", 1.3 }, { "miss", 0.4 } } do
@@ -162,7 +195,7 @@ return {
 		end
 		local sift = setup()
 		sift.start(10, "attempt", 0, 1)
-		t.equal(sift.step(16, true), "completed")
+		t.equal(sift.step(sift.pending.endsAt, true), "completed")
 		t.equal(math.abs(sift.outputs.batch.value - 80) < 0.000001, true)
 		for _, result in sift.outputs.batch.results do
 			t.equal(result, "expired")
@@ -172,12 +205,9 @@ return {
 		local sift, dig = setup()
 		local outcome = dig.state.batches.batch.outcome
 		sift.start(10, "attempt", 0, 1)
-		t.equal(sift.press(11, "attempt", 1), "perfect")
-		sift.step(12, true)
-		t.equal(sift.press(12.8, "attempt", 2), "good")
-		sift.step(14, true)
-		t.equal(sift.press(14.1, "attempt", 3), "miss")
-		sift.step(16, true)
+		t.equal(pressGrade(sift, 1, "perfect"), "perfect")
+		t.equal(pressGrade(sift, 2, "good"), "good")
+		t.equal(pressGrade(sift, 3, "miss"), "miss")
 		t.equal(sift.outputs.batch.outcome, outcome)
 		t.equal(math.abs(sift.outputs.batch.value - 220) < 0.000001, true)
 	end,

@@ -2,6 +2,7 @@
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Run = require(Shared.Pure.Run)
 local Settlement = require(Shared.Pure.Settlement)
+local Hud = require(Shared.Pure.Hud)
 local validate = require(Shared.Pure.ValidateConfig)
 
 local Session = {}
@@ -22,6 +23,9 @@ function Session.new(config, clock: () -> number, runId: string)
 	end
 	function session.reset()
 		session.run = Run.reset(session.run)
+	end
+	function session.remaining()
+		return Hud.remaining(session.run, clock())
 	end
 	return session
 end
