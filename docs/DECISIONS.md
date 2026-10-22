@@ -14,3 +14,4 @@ Never edit an entry's value in place — add a new entry that supersedes it.
 | D-006 | 2026-10-19 | classes have different rarities, and getting a new class will not replace ur current one, you will have the ability to swap between any of the classes you own between runs. | yukicide and jason | — |
 | D-007 | 2026-10-19 | personal cash | yukicide and jason | — |
 | D-008 | 2026-10-19 | timing minigame similar to dead by daylight skillchecks | yukicide and jason | — |
+| D-009 | 2026-10-21 | Toolchain: Rojo syncs `src/` into Studio; Lune runs Luau tests (`tests/run.luau`, zero dependencies); StyLua formats; Selene lints. Exact versions pinned in `rokit.toml`, installed with Rokit locally and by `scripts/ci-install.sh` in CI. Agents playtest through Roblox Studio's built-in MCP server. Git `main` is the source of truth, not any Studio place. | jason (transcribed from chat by claude-opus-5.5, T-001) | — |

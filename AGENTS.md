@@ -21,5 +21,14 @@ Full process: `WORKFLOW.md`. Read it at the start of every session. This file is
 - **Don't mark acceptance criteria done without evidence** (test output or exact manual check result) in the Log.
 - **Never set yourself or your own human as `reviewer`.**
 
+## Roblox (code, Studio, testing)
+- Code lives in `src/` and reaches Studio through Rojo (`rojo serve`). Edit files only. Never edit Rojo-synced scripts inside Studio or through the Studio MCP `multi_edit` tool: Rojo overwrites them.
+- Use the Studio MCP to verify, not to author: `start_stop_play`, `get_console_output`, `execute_luau`, `inspect_instance`, `search_game_tree`, `screen_capture`. Paste the console lines you relied on into the Log.
+- Game logic goes in `src/shared/Pure/`: no Roblox APIs, no `require`, no `math.random`, no `os.time`. Pass randomness and time in. Each module gets `tests/unit/<Name>.spec.luau`.
+- `lune run scripts/check` must end with `ALL CHECKS PASSED` before you open or update a PR.
+- `--!strict` at the top of every `.luau` file. Server is authoritative; validate every RemoteEvent argument on the server.
+- Non-script content (maps, models, UI) is built from code when possible, otherwise saved as `.rbxm` in `assets/` and mapped in `default.project.json`. Content that only exists in someone's Studio does not exist.
+- Unsure about a Roblox API? Look it up (Studio MCP `http_get` on create.roblox.com or its `skill` tool). Never guess API names.
+
 ## When unsure
 Stop, write the question in the ticket Log, push. A logged question is always better than a guess.

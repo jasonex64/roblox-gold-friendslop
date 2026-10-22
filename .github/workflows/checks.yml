@@ -22,3 +22,10 @@ jobs:
       - name: check_docs (push to main)
         if: github.event_name == 'push'
         run: python tools/check_docs.py "${{ github.event.before }}..${{ github.sha }}"
+
+  luau:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/ci-install.sh
+      - run: lune run scripts/check
