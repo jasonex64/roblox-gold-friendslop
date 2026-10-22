@@ -9,7 +9,7 @@ Commit reviewed: <sha>
 - [ ] Every ticket's acceptance criteria re-verified by the reviewer (not just read from the Log)
 - [ ] Tests run by the reviewer, output pasted below
 - [ ] Long-running behavior tested at the D-### player count and duration
-- [ ] Every gameplay literal traces to D-### or EXP-###
+- [ ] Every gameplay literal traces to D-### or EXP-### (`python tools/numbers.py --strict` exits 0)
 - [ ] No swallowed errors / silent fallbacks
 - [ ] No code beyond acceptance criteria (unused params, single-use wrappers, speculative config)
 - [ ] Docs match shipped behavior

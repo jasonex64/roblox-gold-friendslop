@@ -110,6 +110,19 @@ def case_non_utf8_locale(repo, base):
     return run_check(repo, base, env=env)
 
 
+def case_next_revision_only(repo, base):
+    (repo / "docs" / "NEXT_REVISION.md").write_text("| row |\n", encoding="utf-8")
+    commit(repo, "T-002: note an idea")
+    return run_check(repo, base)
+
+
+def case_reviewer_closeout(repo, base):
+    t = repo / "docs" / "tickets" / "T-002.md"
+    t.write_text(t.read_text(encoding="utf-8").replace("id: T-002", "id: T-002\nstatus: done"), encoding="utf-8")
+    commit(repo, "T-002: close out")
+    return run_check(repo, base)
+
+
 CASES = [  # (id, function, expected exit code)
     ("CHK-1 no T-### prefix", case_no_prefix, 1),
     ("CHK-2 change without Log entry", case_no_log, 1),
@@ -119,6 +132,8 @@ CASES = [  # (id, function, expected exit code)
     ("CHK-6 merge with its own undocumented change", case_dirty_merge, 1),
     ("CHK-7 clean merge of documented branch", case_clean_merge, 0),
     ("CHK-8 non-UTF-8 locale, documented change", case_non_utf8_locale, 0),
+    ("CHK-9 NEXT_REVISION.md-only commit needs no Log", case_next_revision_only, 0),
+    ("CHK-10 ticket-only closeout commit needs no Log", case_reviewer_closeout, 0),
 ]
 
 

@@ -6,8 +6,9 @@ Usage:
 
 Rules, per commit in the range:
   1. Message starts with "T-###: " and docs/tickets/T-###.md exists at HEAD.
-  2. If the commit touches any file other than its own ticket file, that ticket's
-     "## Log" section must gain at least one new "### YYYY-MM-DD — " entry in the range.
+  2. If the commit touches any file other than its own ticket file or
+     docs/NEXT_REVISION.md, that ticket's "## Log" section must gain at least one
+     new "### YYYY-MM-DD — " entry in the range.
 A merge commit is exempt only if it introduces no changes of its own (a clean merge:
 every file it brings in comes from commits that are themselves checked).
 """
@@ -17,6 +18,7 @@ import sys
 
 LOG_ENTRY = re.compile(r"^### \d{4}-\d{2}-\d{2} — ", re.M)
 SUBJECT = re.compile(r"^(T-\d{3}): \S")
+NO_LOG_NEEDED = {"docs/NEXT_REVISION.md"}  # append-only notes (D-012)
 
 
 def run(*args):
@@ -74,7 +76,7 @@ def main():
         if run("cat-file", "-e", f"{head}:{ticket}").returncode != 0:
             errors.append(f"{short}: {ticket} does not exist")
             continue
-        if any(f != ticket for f in files):
+        if any(f != ticket and f not in NO_LOG_NEEDED for f in files):
             needs_log.add(tid)
 
     for tid in sorted(needs_log):

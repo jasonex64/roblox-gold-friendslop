@@ -1,14 +1,18 @@
 """Validate ticket files and print the board. Exits 1 on any invalid ticket.
 
-Usage: python tools/board.py
-Stdlib only. Source of truth is docs/tickets/T-*.md frontmatter.
+Usage: python tools/board.py            # claims read from `git ls-remote origin`
+       python tools/board.py --local    # skip the remote claim lookup (offline)
+Stdlib only. Source of truth is docs/tickets/T-*.md frontmatter on main,
+plus pushed `T-###-*` branches, which are claims (D-010).
 """
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 TICKET_DIR = Path(__file__).resolve().parent.parent / "docs" / "tickets"
 STATUSES = ["todo", "doing", "blocked", "review", "done"]
+WORD_CAP = 300  # words above "## Log" for tickets not yet done (D-012)
 REQUIRED = ["id", "title", "milestone", "status", "owner", "agent",
             "reviewer", "depends_on", "blocked_on"]
 
@@ -28,6 +32,7 @@ def parse(path):
     if not re.fullmatch(r"\[(\s*T-\d{3}\s*(,\s*T-\d{3}\s*)*)?\]", deps):
         raise ValueError(f"depends_on must look like [T-001, T-002], got {deps!r}")
     fields["depends_on"] = re.findall(r"T-\d{3}", deps)
+    fields["words"] = len(text.split("\n## Log", 1)[0].split())
     return fields
 
 
@@ -49,13 +54,34 @@ def check(t, path, all_ids):
             errs.append("reviewer required for review/done")
         elif t["reviewer"] == t["owner"]:
             errs.append("reviewer must differ from owner")
+    if t["status"] != "done" and t["words"] > WORD_CAP:
+        errs.append(f"{t['words']} words above ## Log, cap is {WORD_CAP} (D-012); link DESIGN.md sections instead of restating them")
     for d in t["depends_on"]:
         if d not in all_ids:
             errs.append(f"depends_on {d} does not exist")
     return errs
 
 
+def remote_claims():
+    """Map ticket id -> claiming branch names, from pushed T-###-* branches on origin."""
+    r = subprocess.run(["git", "ls-remote", "--heads", "origin", "refs/heads/T-*"],
+                       capture_output=True, text=True, encoding="utf-8")
+    if r.returncode != 0:
+        sys.exit(f"git ls-remote origin failed (use --local offline):\n{r.stderr.strip()}")
+    claims = {}
+    for line in r.stdout.splitlines():
+        branch = line.split("refs/heads/", 1)[1]
+        m = re.match(r"(T-\d{3})-", branch)
+        if m:
+            claims.setdefault(m.group(1), []).append(branch)
+    return claims
+
+
 def main():
+    args = sys.argv[1:]
+    if args not in ([], ["--local"]):
+        sys.exit(f"usage: python tools/board.py [--local], got {args}")
+    claims = {} if args else remote_claims()
     paths = sorted(TICKET_DIR.glob("T-*.md"))
     tickets, errors = {}, []
     for p in paths:
@@ -80,6 +106,8 @@ def main():
             ready = all(tickets[d][0]["status"] == "done" for d in t["depends_on"])
             who = f"{t['owner']}/{t['agent']}" if t["owner"] else "-"
             flag = "" if ready or t["status"] != "todo" else "  (waiting on deps)"
+            if t["status"] == "todo" and t["id"] in claims:
+                flag += f"  (claimed: {', '.join(sorted(claims[t['id']]))})"
             extra = f"  [{t['blocked_on']}]" if t["status"] == "blocked" else ""
             print(f"  {t['status']:<8} {t['id']}  {t['title']}  <{who}>{extra}{flag}")
 
