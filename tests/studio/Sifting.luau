@@ -71,12 +71,12 @@ controller.upgrades = 1
 controller.rate = 2
 assert(service.request(player, "start") == "started")
 local pending = controller.pending
-assert(pending.duration == 1 and pending.checks[1].zoneWidth == 0.5)
-assert(pending.checks[1].perfectWidth == 0.125 and controller.reserved == 1)
+assert(pending.duration == 1 and pending.checks[1].zoneWidth == 0.3125)
+assert(pending.checks[1].perfectWidth == 0.0625 and controller.reserved == 1)
 assert(dig.start({}, "running") == "busy_sifting")
 controller.rate = 1
 controller.upgrades = 0
-assert(pending.duration == 1 and pending.checks[1].zoneWidth == 0.5)
+assert(pending.duration == 1 and pending.checks[1].zoneWidth == 0.3125)
 assert(service.request(player, "press", pending.id, 0 / 0) == "invalid_request")
 assert(service.request(player, "press", pending.id, 1, "perfect") == "invalid_request")
 assert(service.request(player, "press", "forged", 1) == "stale_check")

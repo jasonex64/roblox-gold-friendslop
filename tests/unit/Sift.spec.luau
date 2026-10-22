@@ -29,7 +29,7 @@ end
 local function play(sift, grade)
 	for index = 1, 3 do
 		local check = sift.pending.checks[index]
-		local position = if grade == "perfect" then 0.5 elseif grade == "good" then 0.35 else 0.1
+		local position = if grade == "perfect" then 0.5 elseif grade == "good" then 0.4 else 0.1
 		assert(
 			sift.press(check.startedAt + position / check.needleSpeed, "attempt", index) == grade
 		)
@@ -67,8 +67,8 @@ return {
 		sift.start(10, "attempt", 1, 2)
 		t.equal(sift.pending.duration, 1)
 		t.equal(sift.pending.endsAt, 13)
-		t.equal(sift.pending.checks[1].zoneWidth, 0.5)
-		t.equal(sift.pending.checks[1].perfectWidth, 0.125)
+		t.equal(sift.pending.checks[1].zoneWidth, 0.3125)
+		t.equal(sift.pending.checks[1].perfectWidth, 0.0625)
 		config.siftPerfectBonus = 9
 		config.siftSweepSeconds = 100
 		t.equal(sift.pending.settings.siftPerfectBonus, 0.2)
@@ -155,7 +155,7 @@ return {
 		sift.start(10, "attempt", 0, 1)
 		t.equal(sift.press(11, "attempt", 1), "perfect")
 		sift.step(12, true)
-		t.equal(sift.press(12.7, "attempt", 2), "good")
+		t.equal(sift.press(12.8, "attempt", 2), "good")
 		sift.step(14, true)
 		t.equal(sift.press(14.1, "attempt", 3), "miss")
 		sift.step(16, true)

@@ -7,8 +7,8 @@ return table.freeze({
 	siftSeconds = 6, -- D-015
 	siftChecks = 3, -- D-015
 	siftSweepSeconds = 2, -- D-015
-	siftPerfectWidth = 0.10, -- D-015
-	siftGoodWidth = 0.15, -- D-015
+	siftPerfectWidth = 0.05, -- D-016
+	siftGoodWidth = 0.10, -- D-016
 	siftUpgradeWidth = 0.25, -- D-015
 	siftPerfectBonus = 0.20, -- D-015
 	siftGoodBonus = 0.10, -- D-015
