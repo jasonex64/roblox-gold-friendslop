@@ -5,3 +5,4 @@ build/
 sourcemap.json
 roblox.yml
 .env
+tools/blender/__pycache__/
