@@ -16,5 +16,6 @@ OBJ 347fa0cb8ed6fa7b472450331d0623599ca91f422d57bc80a688e17bb2704c8a
 MTL 17e69a7b1dbea9d4546b40afb8028c360dbd1b158d7fef59eb0e5c6b014cab85
 ```
 
-No Roblox asset ID has been supplied yet. This export is not wired into the game.
-A human must import/upload it; see the root README for the handoff and second-person check.
+Human-uploaded mesh: `rbxassetid://110126503188226`, creator **SPWM Studios**,
+reported by yukicide (D-031). Config supplies this ID to the starter Pan's visual handle.
+See the root README for the independent second-person setup check.

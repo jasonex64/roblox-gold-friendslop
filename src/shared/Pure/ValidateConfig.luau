@@ -1,6 +1,11 @@
 --!strict
 local function validate(config: any)
 	assert(
+		type(config.goldPanMeshId) == "string"
+			and string.match(config.goldPanMeshId, "^rbxassetid://[1-9]%d*$"),
+		"Config.goldPanMeshId must be a Roblox asset ID"
+	)
+	assert(
 		type(config.rulesVersion) == "string" and config.rulesVersion ~= "",
 		"Config.rulesVersion required"
 	)
