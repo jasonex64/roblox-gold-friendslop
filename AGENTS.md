@@ -46,6 +46,7 @@ Re-run the gates, re-check each ticked criterion yourself, confirm the Log match
 - Game logic goes in `src/shared/Pure/`: no Roblox APIs, no `require`, no `math.random`, no `os.time`. Pass randomness, time, and config values in. Each module gets `tests/unit/<Name>.spec.luau`.
 - `--!strict` at the top of every `.luau` file. Server is authoritative; validate every RemoteEvent argument on the server.
 - Non-script content (maps, models, UI) is built from code when possible, otherwise saved as `.rbxm` in `assets/` and mapped in `default.project.json`. Content that only exists in someone's Studio does not exist.
+- Blender art: commit the generator in `tools/blender/` and exports in `assets/meshes/` (mesh files through Git LFS). A human uploads the reviewed export to Roblox; agents do not upload. Record the human-provided asset ID in `src/shared/Config.luau` with its decision citation before wiring it into the game. Reuse the existing Studio place with Rojo sync for validation.
 - Unsure about a Roblox API? Look it up (Studio MCP `http_get` on create.roblox.com or its `skill` tool). Never guess API names.
 
 ## When unsure
