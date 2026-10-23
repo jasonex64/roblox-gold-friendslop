@@ -110,10 +110,8 @@ return {
 	["RUN-SM-2 finish returns exactly the required order once"] = function(t)
 		local run = ended()
 		local steps = Run.finish(run)
-		t.equal(#steps, 4)
-		for index, expected in
-			{ "stop_production", "sell_completed", "discard_unprocessed", "freeze_result" }
-		do
+		t.equal(#steps, 3)
+		for index, expected in { "stop_production", "discard_unsold", "freeze_result" } do
 			t.equal(steps[index], expected)
 		end
 		t.equal(run.phase, "results")

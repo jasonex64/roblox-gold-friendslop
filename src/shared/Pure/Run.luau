@@ -90,7 +90,7 @@ end
 function Run.finish(run: State): { string }
 	assert(run.phase == "ended", "Run.finish: run must be ended and not already finished")
 	run.phase = "results"
-	return { "stop_production", "sell_completed", "discard_unprocessed", "freeze_result" }
+	return { "stop_production", "discard_unsold", "freeze_result" }
 end
 
 -- Call only after executing finish's steps. The caller owns the unique initial
