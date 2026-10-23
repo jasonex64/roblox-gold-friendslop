@@ -33,6 +33,8 @@ GitHub main (truth) --git pull--> your folder --rojo serve--> your Roblox Studio
 
 ## Every session
 
+For the latest development summary, PR history and resume checklist, read [the project handoff](docs/HANDOFF.md).
+
 1. `git checkout main && git pull`
 2. `rojo serve`, open Studio, Rojo plugin -> Connect.
 3. Tell your agent: **"Follow AGENTS.md. Pick the next ready ticket."**
