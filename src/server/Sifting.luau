@@ -39,7 +39,7 @@ function Sifting.new(config, session, camp, digging, remote)
 		local controller = self.get(player)
 		local carried = 0
 		for _, batch in digging.get(player).state.batches do
-			if batch.status == "queued" or batch.status == "processing" then
+			if batch.status == "queued" then
 				carried += 1
 			end
 		end
