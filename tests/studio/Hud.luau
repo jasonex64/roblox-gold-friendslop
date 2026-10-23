@@ -13,16 +13,22 @@ assert(
 )
 assert(root.Top.Waiting.Title.Text == status:GetAttribute("Phase"):gsub("^%l", string.upper))
 assert(
-	root.Inventory.Counts.Text
+	root.Top.Bucket.Value.Text
 		== string.format(
-			"Dirt %d/%d  •  Finds %d/%d",
-			player:GetAttribute("CarriedBatches"),
-			config.bucketBatches,
+			"%d/%d dirt",
+			player:GetAttribute("CarriedBatches") * config.dirtPerBatch,
+			config.bucketBatches * config.dirtPerBatch
+		)
+)
+assert(
+	root.Top.Backpack.Value.Text
+		== string.format(
+			"%d/%d items",
 			player:GetAttribute("CompletedFinds"),
 			config.outputCapacity
 		)
 )
-assert(root.ActionDock.Hint.Text == player:GetAttribute("HudHint"))
+assert(root.ActionDock:FindFirstChild("Hint") == nil, "persistent reminder must be absent")
 local viewport = workspace.CurrentCamera.ViewportSize
 local buttons = 0
 local function inspect(object)
@@ -68,7 +74,7 @@ if root.Sift.Visible then
 end
 print(
 	string.format(
-		"[UX-2 layout] %dx%d: timer/phase/haul/cash/bucket/next-action match server; visible text fits and %d buttons meet 44px targets",
+		"[UX-2 layout] %dx%d: timer/phase/haul/cash/bucket/backpack match server; persistent reminder absent; visible text fits and %d buttons meet 44px targets",
 		viewport.X,
 		viewport.Y,
 		buttons

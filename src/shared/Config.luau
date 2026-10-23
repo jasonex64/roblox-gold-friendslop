@@ -16,7 +16,7 @@ return table.freeze({
 	siftGoodBonus = 0.10, -- D-015
 	siftMissPenalty = 0.20, -- D-015
 	siftMinimumValue = 0.40, -- D-015
-	dirtPerBatch = 5, -- D-024
+	dirtPerBatch = 1, -- D-028
 	bucketBatches = 5, -- D-024
 	outputCapacity = 20, -- D-024
 	openingBatches = 5, -- D-024

@@ -48,13 +48,10 @@ local haulBox, haul = stat("Crew Haul", Theme.gold)
 local cashBox, cash = stat("Run Cash", Theme.green)
 local timerBox, timer = stat("Waiting", Theme.cyan)
 local help = Theme.button(top, "Help", "?", Theme.purple)
-local info = Theme.surface(root, "Inventory", Theme.white)
-local inventory = Theme.text(info, "Counts", "Loading inventory...", 16, false)
-inventory.Size = UDim2.new(1, -16, 1, -6)
-inventory.Position = UDim2.fromOffset(8, 3)
-local feedback = Theme.text(root, "Feedback", "Bank → River → Buyer → Camp", 18, true)
+local bucketBox, bucketCount = stat("Bucket", Theme.cyan)
+local backpackBox, backpackCount = stat("Backpack", Theme.purple)
+local feedback = require(script.Toast).new(root, Theme)
 local dock = Theme.surface(root, "ActionDock", Theme.white)
-local hint = Theme.text(dock, "Hint", "Loading your next action...", 16, false)
 local primary = Theme.button(dock, "Primary", "Get ready!", Theme.green)
 local buy = Theme.button(dock, "Upgrade", "Shovel", Theme.gold)
 local helpPanel = Theme.surface(root, "Guide", Theme.white)
@@ -129,7 +126,7 @@ resultHaul.Position = UDim2.fromOffset(8, 4)
 local resultCopy = Theme.text(
 	results,
 	"ResetRules",
-	"Finds sold. Unprocessed dirt discarded.\nReplay resets cash, inventory, upgrades and opening finds.\nNo permanent rewards saved.",
+	"Only shop sales counted. Unsold items discarded without payment.\nReplay resets cash, inventory, upgrades and opening finds.\nNo permanent rewards saved.",
 	16,
 	false
 )
@@ -151,14 +148,14 @@ local function layout()
 	place(cashBox, cell + 8, 0, cell, statHeight)
 	place(timerBox, topWidth - cell - 52, 0, cell, statHeight)
 	place(help, topWidth - 44, 2, 44, 44)
-	place(info, 12, 64, cell * 2 + 8, 26)
-	place(feedback, 12, 96, math.min(w - 24, 320), 42)
+	place(bucketBox, 0, 56, cell, statHeight)
+	place(backpackBox, cell + 8, 56, cell, statHeight)
+	feedback.layout(w, cell)
 	local dw = math.min(w - 32, 360)
 	local bottom = if UserInputService.TouchEnabled then 88 else 16
-	place(dock, w - dw - 12, h - bottom - 100, dw, 100)
-	place(hint, 10, 4, dw - 20, 42)
-	place(primary, 10, 48, dw - 20, 44)
-	place(buy, dw - 125, 48, 115, 44)
+	place(dock, w - dw - 12, h - bottom - 64, dw, 64)
+	place(primary, 10, 10, dw - 20, 44)
+	place(buy, dw - 125, 10, 115, 44)
 	local sw = math.min(w - 32, 360)
 	local sh = 202
 	place(siftPanel, w - sw - 12, math.max(6, h - sh - (if compact then 6 else 24)), sw, sh)
@@ -187,9 +184,9 @@ layout()
 local function feedbackCode(code, amount)
 	if code == "sold" then
 		assert(type(amount) == "number", "HUD: sale amount missing")
-		feedback.Text = string.format("Sold finds for $%d!", amount)
+		feedback.show(string.format("Sold finds for $%d!", amount), true)
 	else
-		feedback.Text = Hud.message(code)
+		feedback.show(Hud.message(code), code == "purchased")
 	end
 end
 local function activate()
@@ -205,8 +202,6 @@ local function activate()
 		local action = player:GetAttribute("HudAction")
 		if action and action ~= "none" and action ~= "hit" then
 			actionRemote:FireServer(action)
-		else
-			feedback.Text = hint.Text
 		end
 	end
 end
@@ -225,7 +220,7 @@ local actions = {
 	buy = "buy shovel",
 	cancel = "cancel dig",
 	hit = "hit the zone",
-	none = "Follow the prompt",
+	none = "",
 }
 local function refresh()
 	hit.Caption.Text = if UserInputService.TouchEnabled then "Tap to hit!" else "Press Space to hit"
@@ -244,29 +239,29 @@ local function refresh()
 	local carried, finds =
 		player:GetAttribute("CarriedBatches"), player:GetAttribute("CompletedFinds")
 	if carried ~= nil and finds ~= nil then
-		inventory.Text = string.format(
-			"Dirt %d/%d  •  Finds %d/%d",
-			carried,
-			Config.bucketBatches,
-			finds,
-			Config.outputCapacity
+		bucketCount.Text = string.format(
+			"%d/%d dirt",
+			carried * Config.dirtPerBatch,
+			Config.bucketBatches * Config.dirtPerBatch
 		)
+		backpackCount.Text = string.format("%d/%d items", finds, Config.outputCapacity)
 	end
-	local action, nextHint = player:GetAttribute("HudAction"), player:GetAttribute("HudHint")
-	if action and nextHint then
+	local action = player:GetAttribute("HudAction")
+	if action then
 		assert(actions[action], "HUD: unknown action " .. action)
-		hint.Text = nextHint
-		primary.Caption.Text = if action == "none"
-			then actions[action]
-			else (if UserInputService.TouchEnabled then "Tap to " else "Press E to ")
-				.. actions[action]
+		primary.Caption.Text = (if UserInputService.TouchEnabled then "Tap to " else "Press E to ")
+			.. actions[action]
 	end
+	primary.Visible = action ~= nil and action ~= "none" and action ~= "buy"
+
 	buy.Visible = player:GetAttribute("Station") == "Camp" and phase == "running"
 	buy.Caption.Text = if player:GetAttribute("ShovelUpgraded")
 		then "Shovel Owned"
 		else string.format("Shovel $%d", Config.shovelUpgradePrice)
 	primary.Size = UDim2.new(1, if buy.Visible then -145 else -20, 0, 44)
-	dock.Visible = current == nil and phase ~= "results"
+	buy.Position = if primary.Visible then UDim2.new(1, -125, 0, 10) else UDim2.fromOffset(10, 10)
+	buy.Size = if primary.Visible then UDim2.fromOffset(115, 44) else UDim2.new(1, -20, 0, 44)
+	dock.Visible = current == nil and phase == "running" and (primary.Visible or buy.Visible)
 	siftPanel.Visible = current ~= nil and phase == "running"
 	local result = status:GetAttribute("ResultHaul")
 	results.Visible = phase == "results" and result ~= nil
@@ -280,8 +275,7 @@ local function refresh()
 		lastRunId = id
 		current = nil
 		sent = false
-		feedback.Text =
-			"Bank → River → Buyer → Camp. Sell before the bell! Unsold finds and dirt are discarded without payment."
+		feedback.clear()
 	end
 end
 player.AttributeChanged:Connect(refresh)
@@ -322,8 +316,7 @@ siftRemote.OnClientEvent:Connect(function(code, view, find)
 	end
 	if code == "completed" then
 		assert(find, "HUD: completion missing find")
-		feedback.Text =
-			string.format("%s! $%d • Take your find to the Buyer", find.kind, find.value)
+		feedback.show(string.format("%s! Worth $%d", find.kind, find.value), true)
 	end
 	refresh()
 end)

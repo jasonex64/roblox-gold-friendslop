@@ -70,6 +70,7 @@ assert(service.request(player, "start", 1000) == "invalid_request")
 controller.upgrades = 1
 controller.rate = 2
 assert(service.request(player, "start") == "started")
+assert(player:GetAttribute("CarriedBatches") == 0, "starting sift must consume its one dirt")
 local pending = controller.pending
 assert(pending.duration == 1 and pending.checks[1].zoneWidth == 0.3125)
 assert(pending.checks[1].perfectWidth == 0.0625 and controller.reserved == 1)
