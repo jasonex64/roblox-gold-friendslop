@@ -12,6 +12,7 @@ local now = 0
 local session = require(server.Session).new(config, function()
 	return now
 end, "end-fixture")
+session.crew.join(tostring(player.UserId))
 local camp = workspace.RiverCamp
 local remote = { FireClient = function() end }
 local digging = require(server.Digging).new(config, session, camp)
@@ -32,7 +33,13 @@ now = config.readySeconds
 session.advance(true)
 assert(shift.request(player, "replay", session.run.id) == "wrong_phase")
 find("prior", 60)
-ledger.sell("prior-sale")
+session.crew.sale(
+	tostring(player.UserId),
+	ledger,
+	{ [tostring(player.UserId)] = ledger },
+	"prior-sale",
+	now
+)
 assert(ledger.buy("prior-buy") == "purchased")
 find("complete", 19)
 dig.state.batches.raw = { id = "raw", status = "queued" }

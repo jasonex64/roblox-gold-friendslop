@@ -70,3 +70,25 @@ D-002: shared crew success. D-003: personal wallets, even sale-value splits and 
 ## ART — Art pass (after Gate A, optional tooling)
 Starts only after T-011. Nothing in M0 or M1 depends on it.
 - T-018 Add the Blender pipeline for the art pass
+
+## M2 — Gate B cooperative prototype
+
+Owner authorized Gate B planning and the shared-crew/shop-payout implementation on 2026-10-23.
+Outcome: one crew runs a shared shift, divides shop proceeds into personal wallets,
+passes dirt through a shared bin, and voluntarily funds one basic sluice.
+Keep the accepted Gate A loop and D-023 shop-only payment; unsold items are discarded
+at the bell. Earlier roadmap/design auto-sale text is superseded by D-023.
+
+| Ticket | Outcome | Depends on |
+|---|---|---|
+| T-019 | Shared crew shift and shop-sale payouts | T-011 (merged and accepted by owner) |
+| T-020 | Shared camp dirt bin | T-019 |
+| T-021 | Crew-funded basic sluice | T-019, T-020 |
+| T-022 | Gate B cooperative validation and continue/revise decision | T-019, T-020, T-021 |
+
+Exit: human-observed solo/crew runs show whether cooperation helps; sale/contribution,
+inventory, cutoff, leave and replay checks pass; tuning is approved and all gates pass.
+Admission, money and replay prototype details belong to T-019's recorded decisions.
+Existing Features cards provide context, not silent replacements for later human decisions.
+Full lobby/teleports, hopper, more tiers, night/rush, permanent rewards, pets, classes,
+monetization and art remain separate later work. T-018 is deferred and does not block M2.

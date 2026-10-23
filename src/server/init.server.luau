@@ -58,8 +58,11 @@ local interaction =
 local actionRemote = Instance.new("RemoteEvent")
 actionRemote.Name = "ActionRequest"
 actionRemote.OnServerEvent:Connect(function(player, ...)
-	local result, amount = interaction.request(player, ...)
-	actionRemote:FireClient(player, result, amount)
+	local result, amount, total = interaction.request(player, ...)
+	-- Economy publishes accepted shop requests itself, including each crew share.
+	if result ~= "sold" and result ~= "purchased" then
+		actionRemote:FireClient(player, result, amount, total)
+	end
 end)
 actionRemote.Parent = ReplicatedStorage
 
@@ -71,11 +74,12 @@ gate.OnInvoke = function(player)
 		typeof(player) == "Instance" and player:IsA("Player") and player.Parent == Players,
 		"ProductionAllowed: invalid player"
 	)
-	return session.accepts()
+	return session.acceptsPlayer(player)
 end
 gate.Parent = script
 
 local function equip(player)
+	session.crew.join(tostring(player.UserId))
 	digging.add(player)
 	sifting.add(player)
 	economy.add(player)
@@ -127,6 +131,7 @@ local function equip(player)
 					tool:Destroy()
 				end
 				storage:Destroy()
+				session.crew.leave(tostring(player.UserId))
 				economy.remove(player)
 				sifting.remove(player)
 				digging.remove(player)
@@ -170,9 +175,12 @@ end
 
 RunService.Heartbeat:Connect(function()
 	local players = Players:GetPlayers()
-	local ready = #players > 0
+	local ready = #session.crew.members() > 0
 	for _, player in players do
-		if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+		if
+			session.crew.admitted[tostring(player.UserId)]
+			and (not player.Character or not player.Character:FindFirstChild("HumanoidRootPart"))
+		then
 			ready = false
 		end
 	end

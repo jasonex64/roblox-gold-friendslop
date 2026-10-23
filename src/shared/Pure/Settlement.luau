@@ -1,7 +1,7 @@
 --!strict
 -- Run and the authoritative per-player controllers are injected by the server.
 local Settlement = {}
-function Settlement.finish(run, entries, Run)
+function Settlement.finish(run, entries, Run, crewHaul)
 	local result
 	for _, step in Run.finish(run) do
 		if step == "stop_production" then
@@ -31,9 +31,12 @@ function Settlement.finish(run, entries, Run)
 				entry.dig.state = state
 			end
 		elseif step == "freeze_result" then
-			local haul = 0
-			for _, entry in entries do
-				haul += entry.economy.ledger.haul
+			local haul = crewHaul
+			if haul == nil then
+				haul = 0
+				for _, entry in entries do
+					haul += entry.economy.ledger.haul
+				end
 			end
 			result = table.freeze({ runId = run.id, haul = haul })
 		else

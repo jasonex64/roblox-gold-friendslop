@@ -6,6 +6,9 @@ local function validate(config: any)
 	)
 	for _, key in
 		{
+			"crewCapacity",
+			"afkSeconds",
+			"afkWarningSeconds",
 			"readySeconds",
 			"shiftSeconds",
 			"digSeconds",
@@ -66,7 +69,14 @@ local function validate(config: any)
 		"Config.siftSeconds must match checks"
 	)
 	for _, key in
-		{ "dirtPerBatch", "bucketBatches", "outputCapacity", "siftChecks", "shovelUpgradePrice" }
+		{
+			"crewCapacity",
+			"dirtPerBatch",
+			"bucketBatches",
+			"outputCapacity",
+			"siftChecks",
+			"shovelUpgradePrice",
+		}
 	do
 		assert(config[key] % 1 == 0, "Config." .. key .. " must be an integer")
 	end

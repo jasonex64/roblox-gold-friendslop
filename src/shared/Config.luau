@@ -1,6 +1,9 @@
 --!strict
 return table.freeze({
-	rulesVersion = "gate-a-approved",
+	rulesVersion = "gate-b-crew-prototype",
+	crewCapacity = 4, -- D-032
+	afkSeconds = 60, -- D-032
+	afkWarningSeconds = 10, -- D-032
 	readySeconds = 3, -- D-024
 	shiftSeconds = 600, -- D-024
 	digSeconds = 1, -- D-024

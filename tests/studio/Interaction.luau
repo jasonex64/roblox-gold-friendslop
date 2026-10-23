@@ -9,6 +9,7 @@ local now = 0
 local session = require(server.Session).new(config, function()
 	return now
 end, "ux-fixture")
+session.crew.join(tostring(player.UserId))
 local camp = workspace.RiverCamp
 local remote = { FireClient = function() end }
 local digging = require(server.Digging).new(config, session, camp)

@@ -54,6 +54,9 @@ end
 Hud.messages = table.freeze({
 	invalid_request = "That action was not accepted. Use the on-screen controls.",
 	wrong_phase = "Production is closed. Wait for the next shift.",
+	waiting_for_crew = "You are waiting for the next crew shift.",
+	replay_waiting = "Ready! The next shift starts when the rest of the crew is ready.",
+	crew_sale = "Crew sale! Your share was added to Run Cash.",
 	out_of_range = "Stand on the brown Bank to dig.",
 	unavailable = "Wait for your character to respawn.",
 	equip_pan = "Equip your Pan at the River.",

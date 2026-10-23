@@ -50,6 +50,7 @@ local timerBox, timer = stat("Waiting", Theme.cyan)
 local help = Theme.button(top, "Help", "?", Theme.purple)
 local bucketBox, bucketCount = stat("Bucket", Theme.cyan)
 local backpackBox, backpackCount = stat("Backpack", Theme.purple)
+local crewNotice = Theme.text(top, "CrewStatus", "", 14, true)
 local feedback = require(script.Toast).new(root, Theme)
 local dock = Theme.surface(root, "ActionDock", Theme.white)
 local primary = Theme.button(dock, "Primary", "Get ready!", Theme.green)
@@ -62,7 +63,7 @@ local helpCopy = Theme.text(
 	helpPanel,
 	"Steps",
 	string.format(
-		"1. BANK: tap Dig or press E. Stay put until the batch is ready.\n2. RIVER: tap Sift, then hit each gold/green zone (tap or Space). Cancel trashes active dirt.\n3. BUYER: sell finished finds for Run Cash and Crew Haul.\n4. CAMP: a $%d temporary shovel makes digs %.1fs. Resets after this shift.\n\nAT THE BELL: all unsold finds, raw dirt and incomplete sifts are discarded without payment. Only shop sales count. Replay resets cash, inventory, upgrades and opening finds. No permanent rewards saved.",
+		"1. BANK: tap Dig or press E. Stay put until the batch is ready.\n2. RIVER: tap Sift, then hit each gold/green zone (tap or Space). Cancel trashes active dirt.\n3. BUYER: sell finds. Eligible crew split the cash; Crew Haul counts the whole sale.\n4. CAMP: a $%d temporary shovel makes digs %.1fs. Resets after this shift.\n\nAT THE BELL: all unsold finds, raw dirt and incomplete sifts are discarded without payment. Only shop sales count. Replay resets cash, inventory, upgrades and opening finds. No permanent rewards saved. Everyone in the crew must choose Play Again.",
 		Config.shovelUpgradePrice,
 		Config.upgradedDigSeconds
 	),
@@ -126,13 +127,15 @@ resultHaul.Position = UDim2.fromOffset(8, 4)
 local resultCopy = Theme.text(
 	results,
 	"ResetRules",
-	"Only shop sales counted. Unsold items discarded without payment.\nReplay resets cash, inventory, upgrades and opening finds.\nNo permanent rewards saved.",
+	"Only shop sales counted. Unsold items discarded without payment.\nReplay resets cash, inventory, upgrades and opening finds.\nNo permanent rewards saved. Everyone in the crew must choose Play Again.",
 	16,
 	false
 )
 local replay = Theme.button(results, "Replay", "Play Again!", Theme.green)
 replay.Activated:Connect(function()
-	runRemote:FireServer("replay", status:GetAttribute("RunId"))
+	if player:GetAttribute("CrewMember") and not player:GetAttribute("ReplayReady") then
+		runRemote:FireServer("replay", status:GetAttribute("RunId"))
+	end
 end)
 local current = nil
 local sent = false
@@ -150,6 +153,7 @@ local function layout()
 	place(help, topWidth - 44, 2, 44, 44)
 	place(bucketBox, 0, 56, cell, statHeight)
 	place(backpackBox, cell + 8, 56, cell, statHeight)
+	place(crewNotice, topWidth - cell - 52, 54, cell + 52, 52)
 	feedback.layout(w, cell)
 	local dw = math.min(w - 32, 360)
 	local bottom = if UserInputService.TouchEnabled then 88 else 16
@@ -181,10 +185,11 @@ local function layout()
 end
 root:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
 layout()
-local function feedbackCode(code, amount)
-	if code == "sold" then
+local function feedbackCode(code, amount, total)
+	if code == "sold" or code == "crew_sale" then
 		assert(type(amount) == "number", "HUD: sale amount missing")
-		feedback.show(string.format("Sold finds for $%d!", amount), true)
+		assert(type(total) == "number", "HUD: crew sale total missing")
+		feedback.show(string.format("Crew sold $%d! Your share: $%d", total, amount), true)
 	else
 		feedback.show(Hud.message(code), code == "purchased")
 	end
@@ -226,6 +231,21 @@ local function refresh()
 	hit.Caption.Text = if UserInputService.TouchEnabled then "Tap to hit!" else "Press Space to hit"
 	cancel.Caption.Text = if UserInputService.TouchEnabled then "Cancel" else "Press Q to cancel"
 	local phase = status:GetAttribute("Phase")
+	local member = player:GetAttribute("CrewMember") == true
+	local shareStatus = player:GetAttribute("CashShareStatus")
+	local crewCount = status:GetAttribute("CrewCount")
+	if not member then
+		crewNotice.Text = "Waiting for next shift"
+	elseif phase == "running" and shareStatus == "warning" then
+		crewNotice.Text = string.format(
+			"Play now! Cash shares pause after %ds idle.",
+			Config.afkSeconds + Config.afkWarningSeconds
+		)
+	elseif phase == "running" and shareStatus == "paused" then
+		crewNotice.Text = "Cash shares paused — dig, sift or sell"
+	elseif crewCount ~= nil then
+		crewNotice.Text = string.format("Crew: %d / %d", crewCount, Config.crewCapacity)
+	end
 	local seconds = status:GetAttribute("RemainingSeconds")
 	if phase and seconds ~= nil then
 		timerBox.Title.Text = phase:gsub("^%l", string.upper)
@@ -254,7 +274,7 @@ local function refresh()
 	end
 	primary.Visible = action ~= nil and action ~= "none" and action ~= "buy"
 
-	buy.Visible = player:GetAttribute("Station") == "Camp" and phase == "running"
+	buy.Visible = member and player:GetAttribute("Station") == "Camp" and phase == "running"
 	buy.Caption.Text = if player:GetAttribute("ShovelUpgraded")
 		then "Shovel Owned"
 		else string.format("Shovel $%d", Config.shovelUpgradePrice)
@@ -268,6 +288,17 @@ local function refresh()
 	if results.Visible then
 		helpPanel.Visible = false
 		resultHaul.Text = string.format("Crew Haul\n$%d", result)
+		local votes = status:GetAttribute("ReplayVotes")
+		if votes ~= nil and crewCount ~= nil then
+			replay.Caption.Text = if not member
+				then "Waiting for crew to replay"
+				elseif player:GetAttribute("ReplayReady") then string.format(
+					"Ready! Waiting for crew (%d/%d)",
+					votes,
+					crewCount
+				)
+				else string.format("Play Again! (%d/%d ready)", votes, crewCount)
+		end
 	end
 	local id = status:GetAttribute("RunId")
 	if id and id ~= lastRunId then

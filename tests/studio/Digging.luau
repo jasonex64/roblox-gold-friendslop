@@ -5,7 +5,8 @@ local config = require(game.ReplicatedStorage.Shared.Config)
 local attributes, pivot = player:GetAttributes(), player.Character:GetPivot()
 local running = true
 local service = require(game.ServerScriptService.Server.Digging).new(config, {
-	accepts = function()
+	activity = function() end,
+	acceptsPlayer = function()
 		return running
 	end,
 }, workspace.RiverCamp)

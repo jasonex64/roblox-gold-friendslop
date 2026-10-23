@@ -18,7 +18,8 @@ local captured = {}
 local service = require(game:GetService("ServerScriptService").Server.Sifting).new(
 	config,
 	{
-		accepts = function()
+		activity = function() end,
+		acceptsPlayer = function()
 			return running
 		end,
 	},

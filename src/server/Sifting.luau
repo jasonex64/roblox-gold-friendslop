@@ -11,7 +11,7 @@ function Sifting.new(config, session, camp, digging, remote)
 	local random = Random.new()
 	local self = {}
 	local function allowed(player)
-		if not session.accepts() then
+		if not session.acceptsPlayer(player) then
 			return false, "wrong_phase"
 		end
 		local character = player.Character
@@ -120,6 +120,15 @@ function Sifting.new(config, session, camp, digging, remote)
 				-- No client timestamp, grade, value, or batch identity is accepted.
 				result, find = controller.press(workspace:GetServerTimeNow(), args[1], args[2])
 			end
+		end
+		if
+			result == "started"
+			or result == "perfect"
+			or result == "good"
+			or result == "miss"
+			or find
+		then
+			session.activity(player)
 		end
 		publish(player, if find then "completed" else result, find)
 		return result

@@ -26,6 +26,17 @@ local function completed(entry, id, value)
 	entry.sift.outputs[id] = { id = id, value = value }
 end
 return {
+	["CREW settlement retains departed sales and never counts recipients twice"] = function(t)
+		local run, entry = setup()
+		completed(entry, "unsold", 19)
+		entry.economy.ledger.haul = 40
+		entry.economy.ledger.wallet = 25
+		Run.advance(run, run.endsAt, true)
+		local result = Settlement.finish(run, { entry }, Run, 200)
+		t.equal(result.haul, 200)
+		t.equal(entry.economy.ledger.wallet, 25)
+		t.equal(next(entry.sift.outputs), nil)
+	end,
 	["END-1 cutoff discards unsold output without payment and preserves sold audit records"] = function(
 		t
 	)
