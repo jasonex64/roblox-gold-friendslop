@@ -50,7 +50,7 @@ local timerBox, timer = stat("Waiting", Theme.cyan)
 local help = Theme.button(top, "Help", "?", Theme.purple)
 local bucketBox, bucketCount = stat("Bucket", Theme.cyan)
 local backpackBox, backpackCount = stat("Backpack", Theme.purple)
-local feedback = Theme.text(root, "Feedback", "", 18, true)
+local feedback = require(script.Toast).new(root, Theme)
 local dock = Theme.surface(root, "ActionDock", Theme.white)
 local primary = Theme.button(dock, "Primary", "Get ready!", Theme.green)
 local buy = Theme.button(dock, "Upgrade", "Shovel", Theme.gold)
@@ -150,7 +150,7 @@ local function layout()
 	place(help, topWidth - 44, 2, 44, 44)
 	place(bucketBox, 0, 56, cell, statHeight)
 	place(backpackBox, cell + 8, 56, cell, statHeight)
-	place(feedback, 12, 120, math.min(w - 24, 320), 42)
+	feedback.layout(w, cell)
 	local dw = math.min(w - 32, 360)
 	local bottom = if UserInputService.TouchEnabled then 88 else 16
 	place(dock, w - dw - 12, h - bottom - 64, dw, 64)
@@ -184,9 +184,9 @@ layout()
 local function feedbackCode(code, amount)
 	if code == "sold" then
 		assert(type(amount) == "number", "HUD: sale amount missing")
-		feedback.Text = string.format("Sold finds for $%d!", amount)
+		feedback.show(string.format("Sold finds for $%d!", amount), true)
 	else
-		feedback.Text = Hud.message(code)
+		feedback.show(Hud.message(code), code == "purchased")
 	end
 end
 local function activate()
@@ -275,7 +275,7 @@ local function refresh()
 		lastRunId = id
 		current = nil
 		sent = false
-		feedback.Text = ""
+		feedback.clear()
 	end
 end
 player.AttributeChanged:Connect(refresh)
@@ -316,7 +316,7 @@ siftRemote.OnClientEvent:Connect(function(code, view, find)
 	end
 	if code == "completed" then
 		assert(find, "HUD: completion missing find")
-		feedback.Text = string.format("%s! Worth $%d", find.kind, find.value)
+		feedback.show(string.format("%s! Worth $%d", find.kind, find.value), true)
 	end
 	refresh()
 end)
