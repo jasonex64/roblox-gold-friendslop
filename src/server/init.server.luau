@@ -96,6 +96,23 @@ local function equip(player)
 		tool.RequiresHandle = false
 		tool.CanBeDropped = false
 		tool.ToolTip = "Starter " .. name
+		if name == "Pan" then
+			-- Cosmetic dimensions match the generated pan; no gameplay collision.
+			local handle = Instance.new("Part")
+			handle.Name = "Handle"
+			handle.Size = Vector3.new(2.2, 0.45, 2.2)
+			handle.CanCollide = false
+			handle.CanTouch = false
+			handle.CanQuery = false
+			handle.Massless = true
+			handle.Color = Color3.fromRGB(44, 112, 65)
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.FileMesh
+			mesh.MeshId = Config.goldPanMeshId
+			mesh.Parent = handle
+			handle.Parent = tool
+			tool.RequiresHandle = true
+		end
 		tool.Parent = storage
 		table.insert(tools, tool)
 	end

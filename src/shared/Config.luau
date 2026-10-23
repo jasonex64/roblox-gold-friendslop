@@ -1,6 +1,7 @@
 --!strict
 return table.freeze({
 	rulesVersion = "gate-a-approved",
+	goldPanMeshId = "rbxassetid://110126503188226", -- D-031
 	readySeconds = 3, -- D-024
 	shiftSeconds = 600, -- D-024
 	digSeconds = 1, -- D-024
