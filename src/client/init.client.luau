@@ -65,7 +65,7 @@ local helpCopy = Theme.text(
 	helpPanel,
 	"Steps",
 	string.format(
-		"1. BANK: tap Dig or press E. Stay put until the batch is ready.\n2. RIVER: tap Sift, then hit each gold/green zone (tap or Space). Cancel trashes active dirt.\n3. BUYER: sell finished finds for Run Cash and Crew Haul.\n4. CAMP: a $%d temporary shovel makes digs %.1fs. Resets after this shift.\n\nAT THE BELL: finished finds sell automatically; raw dirt and incomplete sifts are discarded. Replay resets cash, inventory, upgrades and opening finds. No permanent rewards saved.",
+		"1. BANK: tap Dig or press E. Stay put until the batch is ready.\n2. RIVER: tap Sift, then hit each gold/green zone (tap or Space). Cancel trashes active dirt.\n3. BUYER: sell finished finds for Run Cash and Crew Haul.\n4. CAMP: a $%d temporary shovel makes digs %.1fs. Resets after this shift.\n\nAT THE BELL: all unsold finds, raw dirt and incomplete sifts are discarded without payment. Only shop sales count. Replay resets cash, inventory, upgrades and opening finds. No permanent rewards saved.",
 		Config.shovelUpgradePrice,
 		Config.upgradedDigSeconds
 	),
@@ -281,7 +281,7 @@ local function refresh()
 		current = nil
 		sent = false
 		feedback.Text =
-			"Bank → River → Buyer → Camp. Finished finds sell at the bell; dirt is discarded."
+			"Bank → River → Buyer → Camp. Sell before the bell! Unsold finds and dirt are discarded without payment."
 	end
 end
 player.AttributeChanged:Connect(refresh)

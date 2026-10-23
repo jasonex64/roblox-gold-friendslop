@@ -1,5 +1,7 @@
 # Project handoff
 
+T-004 update: D-023 removes automatic end-of-shift sales; D-024 approves all 34 remaining tuning values; D-025 approves the current solo/reset rules. T-004 is ready for independent review. The earlier session summary below is historical; its outstanding T-004 approvals and provisional-value count are superseded. T-011 integrated validation remains outstanding.
+
 Updated October 22, 2026, America/Los_Angeles. This covers the development session spanning the evening of October 21 into October 22 and the earlier repository history.
 
 ## Where we stopped
@@ -27,7 +29,7 @@ The latest implementation passed all four AGENTS.md gates and **68 unit tests**.
 - Space grades the active check without jumping. Normal jumping works outside the minigame. Cancellation discards the active dirt batch.
 - Perfect/good/miss value adjustments remain D-015/D-016. Currency rounds per find to whole dollars, nearest with halves up (D-017/D-018).
 - Sales increase Run Cash and Crew Haul. Spending cash never lowers Crew Haul. The $50 temporary shovel changes subsequent digs to 0.8 seconds.
-- At the bell, completed finds sell once; unfinished material is discarded. Replay resets run cash, inventory, upgrades and opening finds. No permanent saved rewards are claimed.
+- D-023 correction (T-004): at the bell, all unsold finds and unfinished material are discarded without payment. Only prior shop sales count toward haul. Replay resets run cash, inventory, upgrades and opening finds. No permanent saved rewards are claimed.
 - Good/Perfect celebrations are driven by server-confirmed grades; they leave the dial/buttons usable and clean up after rapid hits, cancellation, respawn and new runs.
 
 See [DECISIONS.md](DECISIONS.md) for D-013–D-022 and [T-010's Log](tickets/T-010.md) for the detailed feedback, fixes and evidence. Historical log entries retain superseded behavior; the statements above describe the final implementation.

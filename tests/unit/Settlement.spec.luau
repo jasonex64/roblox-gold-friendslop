@@ -26,7 +26,7 @@ local function completed(entry, id, value)
 	entry.sift.outputs[id] = { id = id, value = value }
 end
 return {
-	["END-1 cutoff sells only completed output once and preserves sold audit records"] = function(
+	["END-1 cutoff discards unsold output without payment and preserves sold audit records"] = function(
 		t
 	)
 		local run, entry = setup()
@@ -44,9 +44,9 @@ return {
 		Run.advance(run, run.endsAt, true)
 		t.equal(Run.accepts(run, run.endsAt), false)
 		local result = Settlement.finish(run, { entry }, Run)
-		t.equal(result.haul, 79)
-		t.equal(entry.economy.ledger.wallet, 29)
-		t.equal(entry.dig.state.batches.finished.status, "sold")
+		t.equal(result.haul, 60)
+		t.equal(entry.economy.ledger.wallet, 10)
+		t.equal(entry.dig.state.batches.finished, nil)
 		t.equal(entry.dig.state.batches.earlier.status, "sold")
 		t.equal(entry.dig.state.batches.raw, nil)
 		t.equal(entry.dig.state.batches.processing, nil)
@@ -57,7 +57,7 @@ return {
 		t.errors(function()
 			Settlement.finish(run, { entry }, Run)
 		end)
-		t.equal(entry.economy.sell("settlement/" .. run.id), "duplicate_request")
+		t.equal(entry.economy.ledger.requests["settlement/" .. run.id], nil)
 		t.equal(entry.economy.sell("later-sale"), "nothing_to_sell")
 		t.equal(entry.economy.ledger.haul, result.haul)
 		t.errors(function()

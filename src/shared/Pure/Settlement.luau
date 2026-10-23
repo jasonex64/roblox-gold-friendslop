@@ -8,14 +8,10 @@ function Settlement.finish(run, entries, Run)
 			for _, entry in entries do
 				entry.dig.cancel()
 			end
-		elseif step == "sell_completed" then
-			for _, entry in entries do
-				-- Client sale IDs are GUIDs; this namespace is reserved to settlement.
-				entry.economy.sell("settlement/" .. run.id)
-			end
-		elseif step == "discard_unprocessed" then
+		elseif step == "discard_unsold" then
 			for _, entry in entries do
 				entry.sift.cancel()
+				entry.sift.outputs = {}
 				local state = table.clone(entry.dig.state)
 				local retained = {}
 				for id, batch in state.batches do
@@ -23,8 +19,10 @@ function Settlement.finish(run, entries, Run)
 						retained[id] = batch
 					else
 						assert(
-							batch.status == "queued" or batch.status == "processing",
-							"Settlement: unsold completed batch " .. id
+							batch.status == "queued"
+								or batch.status == "processing"
+								or batch.status == "completed",
+							"Settlement: unexpected batch status for " .. id
 						)
 					end
 				end
