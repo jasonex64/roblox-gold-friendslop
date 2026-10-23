@@ -1,5 +1,7 @@
 # Project handoff
 
+T-004 update: D-023 removes automatic end-of-shift sales; D-024 approves all 34 remaining tuning values; D-025 approves the current solo/reset rules. T-004 is ready for independent review. The earlier session summary below is historical; its outstanding T-004 approvals and provisional-value count are superseded. T-011 integrated validation remains outstanding.
+
 Updated October 22, 2026, America/Los_Angeles. This covers the development session spanning the evening of October 21 into October 22 and the earlier repository history.
 
 ## Where we stopped
