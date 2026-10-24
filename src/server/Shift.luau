@@ -4,6 +4,9 @@ local Shift = {}
 function Shift.new(session, digging, sifting, economy, status, spawn)
 	local self = { result = nil }
 	function self.publish()
+		status:SetAttribute("BinCount", session.bin.count())
+		status:SetAttribute("BinCapacity", session.bin.capacity)
+		status:SetAttribute("BinRevision", session.bin.revision)
 		status:SetAttribute("RemainingSeconds", session.remaining())
 		status:SetAttribute("RunId", session.run.id)
 		status:SetAttribute("StartedAt", session.run.startedAt)

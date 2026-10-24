@@ -13,6 +13,7 @@ local actionRemote = ReplicatedStorage:WaitForChild("ActionRequest")
 local siftRemote = ReplicatedStorage:WaitForChild("SiftRequest")
 local economyRemote = ReplicatedStorage:WaitForChild("EconomyRequest")
 local runRemote = ReplicatedStorage:WaitForChild("RunRequest")
+local binRemote = ReplicatedStorage:WaitForChild("BinRequest")
 local gui = Instance.new("ScreenGui")
 gui.Name = "GoldHUD"
 gui.ResetOnSpawn = false
@@ -55,6 +56,14 @@ local feedback = require(script.Toast).new(root, Theme)
 local dock = Theme.surface(root, "ActionDock", Theme.white)
 local primary = Theme.button(dock, "Primary", "Get ready!", Theme.green)
 local buy = Theme.button(dock, "Upgrade", "Shovel", Theme.gold)
+local binPanel = require(script.BinPanel).new(root, Theme, function(action, quantity)
+	binRemote:FireServer(
+		action,
+		status:GetAttribute("RunId"),
+		status:GetAttribute("BinRevision"),
+		quantity
+	)
+end)
 local helpPanel = Theme.surface(root, "Guide", Theme.white)
 helpPanel.Visible = true
 helpPanel.ZIndex = 5
@@ -63,7 +72,7 @@ local helpCopy = Theme.text(
 	helpPanel,
 	"Steps",
 	string.format(
-		"1. BANK: tap Dig or press E. Stay put until the batch is ready.\n2. RIVER: tap Sift, then hit each gold/green zone (tap or Space). Cancel trashes active dirt.\n3. BUYER: sell finds. Eligible crew split the cash; Crew Haul counts the whole sale.\n4. CAMP: a $%d temporary shovel makes digs %.1fs. Resets after this shift.\n\nAT THE BELL: all unsold finds, raw dirt and incomplete sifts are discarded without payment. Only shop sales count. Replay resets cash, inventory, upgrades and opening finds. No permanent rewards saved. Everyone in the crew must choose Play Again.",
+		"1. BANK: tap Dig or press E. Stay put until the batch is ready.\n2. RIVER: tap Sift, then hit each gold/green zone (tap or Space). Cancel trashes active dirt.\n3. BUYER: sell finds. Eligible crew split the cash; Crew Haul counts the whole sale.\n4. CREW BIN: share dirt using All or a quantity slider.\n5. CAMP: a $%d temporary shovel makes digs %.1fs. Resets after this shift.\n\nAT THE BELL: all unsold finds, raw dirt and incomplete sifts are discarded without payment. Only shop sales count. Replay resets cash, inventory, upgrades and opening finds. No permanent rewards saved. Everyone in the crew must choose Play Again.",
 		Config.shovelUpgradePrice,
 		Config.upgradedDigSeconds
 	),
@@ -160,6 +169,7 @@ local function layout()
 	place(dock, w - dw - 12, h - bottom - 64, dw, 64)
 	place(primary, 10, 10, dw - 20, 44)
 	place(buy, dw - 125, 10, 115, 44)
+	binPanel.layout(w, h)
 	local sw = math.min(w - 32, 360)
 	local sh = 202
 	place(siftPanel, w - sw - 12, math.max(6, h - sh - (if compact then 6 else 24)), sw, sh)
@@ -205,7 +215,9 @@ local function activate()
 		end
 	else
 		local action = player:GetAttribute("HudAction")
-		if action and action ~= "none" and action ~= "hit" then
+		if action == "open_bin" then
+			binPanel.open()
+		elseif action and action ~= "none" and action ~= "hit" then
 			actionRemote:FireServer(action)
 		end
 	end
@@ -219,6 +231,7 @@ buy.Activated:Connect(function()
 	actionRemote:FireServer("buy")
 end)
 local actions = {
+	open_bin = "open crew bin",
 	dig = "dig",
 	sift = "sift",
 	sell = "sell all",
@@ -282,6 +295,21 @@ local function refresh()
 	buy.Position = if primary.Visible then UDim2.new(1, -125, 0, 10) else UDim2.fromOffset(10, 10)
 	buy.Size = if primary.Visible then UDim2.fromOffset(115, 44) else UDim2.new(1, -20, 0, 44)
 	dock.Visible = current == nil and phase == "running" and (primary.Visible or buy.Visible)
+	local binCount, binCapacity =
+		status:GetAttribute("BinCount"), status:GetAttribute("BinCapacity")
+	if binCount ~= nil and binCapacity ~= nil and carried ~= nil then
+		binPanel.update(
+			member
+				and phase == "running"
+				and player:GetAttribute("Station") == "DirtBin"
+				and not player:GetAttribute("Digging")
+				and not player:GetAttribute("Sifting"),
+			binCount,
+			binCapacity,
+			carried,
+			Config.bucketBatches
+		)
+	end
 	siftPanel.Visible = current ~= nil and phase == "running"
 	local result = status:GetAttribute("ResultHaul")
 	results.Visible = phase == "results" and result ~= nil
@@ -316,6 +344,7 @@ refresh()
 actionRemote.OnClientEvent:Connect(feedbackCode)
 economyRemote.OnClientEvent:Connect(feedbackCode)
 runRemote.OnClientEvent:Connect(feedbackCode)
+binRemote.OnClientEvent:Connect(feedbackCode)
 ReplicatedStorage:WaitForChild("DigRequest").OnClientEvent:Connect(feedbackCode)
 siftRemote.OnClientEvent:Connect(function(code, view, find)
 	local hitGrade = if code == "completed" and find then find.results[#find.results] else code

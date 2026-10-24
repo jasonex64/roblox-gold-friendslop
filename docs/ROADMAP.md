@@ -93,3 +93,8 @@ Admission, money and replay prototype details belong to T-019's recorded decisio
 Existing Features cards provide context, not silent replacements for later human decisions.
 Full lobby/teleports, hopper, more tiers, night/rush, permanent rewards, pets, classes,
 monetization and art remain separate later work. T-018 is deferred and does not block M2.
+
+## Later — shared-bin upgrades
+- T-024 Upgrade shared camp dirt bin capacity (depends on T-020). Explicitly deferred by owner under D-034; not a Gate B exit requirement.
+
+

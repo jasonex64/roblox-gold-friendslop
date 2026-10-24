@@ -24,7 +24,7 @@ function Interaction.new(config, session, camp, digging, sifting, economy)
 					return "Bank", true
 				elseif pad == camp.Camp or pad == camp.CampSpawn then
 					return "Camp", true
-				elseif pad == camp.River or pad == camp.Buyer then
+				elseif pad == camp.River or pad == camp.Buyer or pad == camp.DirtBin then
 					return pad.Name, true
 				end
 			end
