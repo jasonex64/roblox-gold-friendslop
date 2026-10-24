@@ -1,8 +1,23 @@
 --!strict
--- Atomic ownership/money adapter for T-023. Injected controllers are server-owned.
+-- Atomic inventory adapter for the crew sluice; all dependencies are injected.
 local Machine = {}
+local function count(items)
+	local n = 0
+	for _ in items do
+		n += 1
+	end
+	return n
+end
 function Machine.new(config, Sluice, Batch)
-	local self = { state = nil, settings = nil, batches = {}, outputs = {}, contributors = {} }
+	local self =
+		{ state = nil, settings = nil, batches = {}, outputs = {}, contributors = {}, queue = {} }
+	function self.dirtCount()
+		local n = #self.queue
+		if self.state then
+			n += count(self.state.lanes)
+		end
+		return n
+	end
 	function self.start(members)
 		assert(self.state == nil and members > 0, "Machine: invalid start")
 		self.settings = {
@@ -15,7 +30,7 @@ function Machine.new(config, Sluice, Batch)
 	end
 	function self.clear()
 		self.state, self.settings = nil, nil
-		self.batches, self.outputs, self.contributors = {}, {}, {}
+		self.batches, self.outputs, self.contributors, self.queue = {}, {}, {}, {}
 	end
 	function self.contribute(id, name, economy, amount, requestId)
 		assert(self.state and self.settings, "Machine: not started")
@@ -39,68 +54,89 @@ function Machine.new(config, Sluice, Batch)
 		local previous = self.contributors[id]
 		local contribution =
 			{ name = name, amount = charged + (if previous then previous.amount else 0) }
-		self.state = state
-		economy.ledger = ledger
-		self.contributors[id] = contribution
+		self.state, economy.ledger, self.contributors[id] = state, ledger, contribution
 		return if state.built then "sluice_built" else "contributed", charged
 	end
-	function self.load(id, dig, bin, sourceName, requestId, now)
+	function self.transfer(id, dig, sift, requestId)
 		assert(self.state and self.settings, "Machine: not started")
-		if sourceName ~= "bucket" and sourceName ~= "bin" then
-			return "invalid_request"
+		local key = id .. ":" .. requestId
+		if self.state.requests[key] then
+			return "duplicate_request", 0, 0
 		end
-		if self.state.requests[id .. ":" .. requestId] then
-			return "duplicate_request"
+		if not self.state.built then
+			return "not_built", 0, 0
 		end
 		if dig.pending then
-			return "busy_digging"
+			return "busy_digging", 0, 0
 		end
-		if dig.sifting then
-			return "busy_sifting"
+		if dig.sifting or sift.pending then
+			return "busy_sifting", 0, 0
 		end
-		local source = if sourceName == "bin" then bin.batches else dig.state.batches
-		local item = nil
-		for _, batch in source do
-			if batch.status == "queued" and (item == nil or batch.id < item.id) then
-				item = batch
+		local available = {}
+		for batchId, batch in dig.state.batches do
+			if batch.status == "queued" then
+				table.insert(available, batchId)
 			end
 		end
-		if not item then
-			return if sourceName == "bin" then "bin_empty" else "bucket_empty"
+		table.sort(available)
+		local finished = {}
+		for batchId in self.outputs do
+			table.insert(finished, batchId)
 		end
-		assert(not self.batches[item.id], "Machine: duplicate inventory")
-		local state, reason = Sluice.load(self.state, self.settings, item.id, now)
-		if reason then
-			return reason
+		table.sort(finished)
+		local deposited = math.min(#available, config.sluiceDirtCapacity - self.dirtCount())
+		local collected =
+			math.min(#finished, config.outputCapacity - count(sift.outputs) - sift.reserved)
+		assert(deposited >= 0 and collected >= 0, "Machine: inventory exceeds capacity")
+		if deposited == 0 and collected == 0 then
+			return "sluice_no_transfer", 0, 0
 		end
-		local processing = Batch.transition(item, "processing")
+		local personal, backpack = table.clone(dig.state.batches), table.clone(sift.outputs)
+		local batches, outputs, queue =
+			table.clone(self.batches), table.clone(self.outputs), table.clone(self.queue)
+		local taken = {}
+		for i = 1, collected do
+			local batchId = finished[i]
+			assert(
+				batches[batchId]
+					and batches[batchId].status == "completed"
+					and not personal[batchId]
+					and not backpack[batchId],
+				"Machine: invalid collection inventory"
+			)
+			personal[batchId], backpack[batchId] = batches[batchId], outputs[batchId]
+			batches[batchId], outputs[batchId] = nil, nil
+			table.insert(taken, batchId)
+		end
+		for i = 1, deposited do
+			local batchId = available[i]
+			assert(
+				not batches[batchId] and not self.state.processed[batchId],
+				"Machine: duplicate deposit"
+			)
+			batches[batchId], personal[batchId] = personal[batchId], nil
+			table.insert(queue, batchId)
+		end
+		local state = Sluice.take(self.state, taken)
 		state.requests = table.clone(state.requests)
-		state.requests[id .. ":" .. requestId] = true
-		local remaining = table.clone(source)
-		remaining[item.id] = nil
+		state.requests[key] = true
 		local digState = table.clone(dig.state)
-		if sourceName == "bucket" then
-			digState.batches = remaining
-		end
-		-- Commit without yielding, after all validation and preparation.
-		self.state = state
-		self.batches[item.id] = processing
-		dig.state = digState
-		if sourceName == "bin" then
-			bin.batches = remaining
-			bin.revision += 1
-		end
-		return "sluice_loaded"
+		digState.batches = personal
+		-- Commit both directions together, without a yield or payment.
+		self.state, self.batches, self.outputs, self.queue = state, batches, outputs, queue
+		dig.state, sift.outputs = digState, backpack
+		return "sluice_transferred", deposited, collected
 	end
 	function self.step(now, allowed)
 		if not allowed or not self.state then
 			return 0
 		end
 		local state, finished = Sluice.collect(self.state, self.settings, now)
-		if #finished == 0 then
+		if #finished == 0 and #self.queue == 0 then
 			return 0
 		end
-		local batches, outputs = table.clone(self.batches), table.clone(self.outputs)
+		local batches, outputs, queue =
+			table.clone(self.batches), table.clone(self.outputs), table.clone(self.queue)
 		for _, id in finished do
 			local batch = batches[id]
 			assert(batch and not outputs[id], "Machine: missing/duplicate completion")
@@ -116,23 +152,22 @@ function Machine.new(config, Sluice, Batch)
 				outcome = batch.outcome,
 			})
 		end
-		self.state, self.batches, self.outputs = state, batches, outputs
-		return #finished
-	end
-	function self.prepareSale()
-		local ids, batches = {}, table.clone(self.batches)
-		for id in self.outputs do
-			assert(
-				batches[id] and batches[id].status == "completed",
-				"Machine: invalid sale inventory"
-			)
-			table.insert(ids, id)
-			batches[id] = nil
+		while #queue > 0 do
+			local id = queue[1]
+			local loaded, reason = Sluice.load(state, self.settings, id, now)
+			if reason then
+				assert(
+					reason == "lanes_full" or reason == "output_full",
+					"Machine: unexpected queued load rejection " .. reason
+				)
+				break
+			end
+			batches[id] = Batch.transition(batches[id], "processing")
+			table.remove(queue, 1)
+			state = loaded
 		end
-		return { state = Sluice.take(self.state, ids), batches = batches }
-	end
-	function self.commitSale(prepared)
-		self.state, self.batches, self.outputs = prepared.state, prepared.batches, {}
+		self.state, self.batches, self.outputs, self.queue = state, batches, outputs, queue
+		return #finished
 	end
 	return self
 end
