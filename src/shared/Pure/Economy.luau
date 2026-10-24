@@ -7,9 +7,10 @@ function Economy.new(config, dig, sift, Batch, Ledger)
 		ledger = { wallet = 0, haul = 0, finds = {}, owned = {}, requests = {} },
 	}
 	local shovel = { id = "shovel-2", price = config.shovelUpgradePrice, prerequisites = {} }
-	function self.sell(requestId)
+	-- Prepare without mutation so the crew can validate every recipient before commit.
+	function self.prepareSale(requestId)
 		if self.ledger.requests[requestId] then
-			return "duplicate_request", 0
+			return nil, "duplicate_request"
 		end
 		local prepared = table.clone(self.ledger)
 		prepared.finds = table.clone(self.ledger.finds)
@@ -34,10 +35,26 @@ function Economy.new(config, dig, sift, Batch, Ledger)
 		local amount = ledger.wallet - self.ledger.wallet
 		local state = table.clone(dig.state)
 		state.batches = batches
-		self.ledger = ledger
-		dig.state = state
+		return {
+			ledger = ledger,
+			state = state,
+			amount = amount,
+			result = if #ids == 0 then "nothing_to_sell" else "sold",
+		},
+			nil
+	end
+	function self.commitSale(prepared)
+		self.ledger = prepared.ledger
+		dig.state = prepared.state
 		sift.outputs = {}
-		return if #ids == 0 then "nothing_to_sell" else "sold", amount
+	end
+	function self.sell(requestId)
+		local prepared, reason = self.prepareSale(requestId)
+		if not prepared then
+			return reason, 0
+		end
+		self.commitSale(prepared)
+		return prepared.result, prepared.amount
 	end
 	function self.buy(requestId)
 		local ledger, reason = Ledger.buy(self.ledger, shovel, requestId)

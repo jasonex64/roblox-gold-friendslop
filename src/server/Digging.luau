@@ -48,9 +48,9 @@ function Digging.new(config, session, camp)
 			or not pad:IsDescendantOf(camp)
 			or not pad:GetAttribute("DigSource")
 		then
-			return nil, if session.accepts() then "running" else "closed"
+			return nil, if session.acceptsPlayer(player) then "running" else "closed"
 		end
-		return pad, if session.accepts() then "running" else "closed"
+		return pad, if session.acceptsPlayer(player) then "running" else "closed"
 	end
 	function self.request(player, action, ...)
 		assert(
@@ -90,6 +90,7 @@ function Digging.new(config, session, camp)
 			local source = if pad then pad:GetAttribute("DigSource") else nil
 			local result = controller.step(os.clock(), if pad then 0 else math.huge, phase, source)
 			if result == "created" then
+				session.activity(player)
 				local count = 0
 				for _, batch in controller.state.batches do
 					if batch.status == "queued" or batch.status == "processing" then

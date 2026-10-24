@@ -13,11 +13,21 @@ local dig = Dig.new(config, Batch, function()
 end)
 local sift = { outputs = {} }
 local running = true
+local crew = require(Shared.Pure.Crew).new(config)
+crew.join(tostring(player.UserId))
+crew.start(0)
 local replies = {}
 local service = require(game.ServerScriptService.Server.Economy).new(
 	config,
 	{
-		accepts = function()
+		crew = crew,
+		now = function()
+			return 0
+		end,
+		activity = function()
+			crew.activity(tostring(player.UserId), 0)
+		end,
+		acceptsPlayer = function()
 			return running
 		end,
 	},

@@ -17,6 +17,24 @@ local function setup()
 	return economy, dig, sift, find
 end
 return {
+	["CREW sale preparation preserves inventory until explicit commit"] = function(t)
+		local economy, dig, sift, find = setup()
+		find("gold", 57)
+		local ledger, state, outputs = economy.ledger, dig.state, sift.outputs
+		local prepared, reason = economy.prepareSale("shared-sale")
+		t.equal(reason, nil)
+		t.equal(prepared.amount, 57)
+		t.equal(economy.ledger, ledger)
+		t.equal(dig.state, state)
+		t.equal(sift.outputs, outputs)
+		economy.commitSale(prepared)
+		t.equal(economy.ledger.wallet, 57)
+		t.equal(dig.state.batches.gold.status, "sold")
+		t.equal(next(sift.outputs), nil)
+		local duplicate, rejection = economy.prepareSale("shared-sale")
+		t.equal(duplicate, nil)
+		t.equal(rejection, "duplicate_request")
+	end,
 	["ECON-2 decimal dig interval accepts its exact deadline at nonzero clock origins"] = function(
 		t
 	)

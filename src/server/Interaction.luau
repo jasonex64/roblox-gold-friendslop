@@ -44,7 +44,9 @@ function Interaction.new(config, session, camp, digging, sifting, economy)
 		end
 		local place, alive = station(player)
 		local action, hint = Hud.nextAction({
-			phase = session.run.phase,
+			phase = if session.crew.admitted[tostring(player.UserId)]
+				then session.run.phase
+				else "waiting",
 			station = place,
 			alive = alive,
 			carried = carried,
@@ -99,7 +101,7 @@ function Interaction.new(config, session, camp, digging, sifting, economy)
 			end
 			return "cancelled"
 		end
-		if not session.accepts() then
+		if not session.acceptsPlayer(player) then
 			return "wrong_phase"
 		end
 		if action == "dig" then
