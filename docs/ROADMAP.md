@@ -83,7 +83,8 @@ at the bell. Earlier roadmap/design auto-sale text is superseded by D-023.
 |---|---|---|
 | T-019 | Shared crew shift and shop-sale payouts | T-011 (merged and accepted by owner) |
 | T-020 | Shared camp dirt bin | T-019 |
-| T-021 | Crew-funded basic sluice | T-019, T-020 |
+| T-023 | Pure sluice rules: fund, load, process, output | T-001 |
+| T-021 | Crew-funded basic sluice | T-019, T-020, T-023 |
 | T-022 | Gate B cooperative validation and continue/revise decision | T-019, T-020, T-021 |
 
 Exit: human-observed solo/crew runs show whether cooperation helps; sale/contribution,
