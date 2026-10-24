@@ -12,7 +12,7 @@ local remote = { FireClient = function() end }
 local digging = require(server.Digging).new(config, session, camp)
 local sifting = require(server.Sifting).new(config, session, camp, digging, remote)
 local economy = require(server.Economy).new(config, session, camp, digging, sifting, remote)
-local machinery = require(server.Machinery).new(session, camp, digging, economy)
+local machinery = require(server.Machinery).new(session, camp, digging, economy, sifting)
 local interaction =
 	require(server.Interaction).new(config, session, camp, digging, sifting, economy)
 local status = Instance.new("Folder")
@@ -57,7 +57,7 @@ for _, payload in { 0, -1, 0 / 0, math.huge, 1.5, "100", {} } do
 	assert(request(a, "contribute", payload) == "invalid_request")
 end
 assert(machinery.request(a, "load", session.run.id, guid(), "bin", "extra") == "invalid_request")
-assert(machinery.request(a, "load", "old", guid(), "bin") == "stale_run")
+assert(machinery.request(a, "transfer", "old", guid(), nil) == "stale_run")
 stand(a, camp.Camp, 0)
 assert(request(a, "contribute", 1) == "stand_at_sluice")
 stand(a, camp.Sluice, -5)
@@ -81,7 +81,7 @@ shift.publish()
 machinery.publish()
 assert(status:GetAttribute("SluiceBuilt") and status:GetAttribute("SluiceFunded") == price)
 assert(camp.SluiceTrough.Transparency == 0)
-local original = dirt(a, "shared-bin")
+local binDirt = dirt(a, "untouched-bin")
 assert(
 	session.bin.transfer(
 		tostring(a.UserId),
@@ -93,17 +93,30 @@ assert(
 		true
 	) == "deposited"
 )
-assert(request(b, "load", "bin") == "sluice_loaded")
-assert(
-	session.bin.count() == 0 and session.machine.batches[original.id].outcome == original.outcome
-)
+assert(request(b, "load", "bin") == "invalid_request")
+local original = dirt(a, "personal-dirt")
+local result, deposited, collected = request(a, "transfer", nil)
+assert(result == "sluice_transferred" and deposited == 1 and collected == 0)
+assert(session.bin.batches[binDirt.id] == binDirt and session.machine.dirtCount() == 1)
+session.machine.step(now, true)
 local loadedAt = now
 assert(session.machine.step(loadedAt + config.sluiceProcessSeconds - 0.01, true) == 0)
 now = loadedAt + config.sluiceProcessSeconds
 assert(session.machine.step(now, true) == 1)
-assert(session.machine.outputs[original.id].value == config.openingValue)
-assert(session.machine.outputs[original.id].digger == tostring(a.UserId))
--- Pure output exists without personal finds: the real interaction must expose Sell.
+assert(session.machine.outputs[original.id].outcome == original.outcome)
+stand(b, camp.Buyer, 0)
+interaction.publish(b)
+assert(b:GetAttribute("HudAction") ~= "sell")
+assert(economy.request(b, "sell", guid()) == "nothing_to_sell")
+-- Just outside the pad, within the avatar's physical bounds: nearby controls work.
+stand(b, camp.Sluice, camp.Sluice.Size.X / 2 + 0.5)
+interaction.publish(b)
+assert(b:GetAttribute("HudAction") == "open_sluice")
+local result, deposited, collected = request(b, "transfer", nil)
+assert(result == "sluice_transferred" and deposited == 0 and collected == 1)
+assert(sifting.get(b).outputs[original.id].digger == tostring(a.UserId))
+assert(b:GetAttribute("CompletedFinds") == 1 and session.crew.haul == 0)
+assert(request(a, "transfer", nil) == "sluice_no_transfer")
 stand(b, camp.Buyer, 0)
 interaction.publish(b)
 assert(b:GetAttribute("HudAction") == "sell")
@@ -123,9 +136,9 @@ assert(next(session.machine.outputs) == nil and next(session.machine.state.outpu
 assert(economy.request(b, "sell", guid()) == "nothing_to_sell")
 stand(b, camp.Sluice, 5)
 dirt(b, "cutoff")
-assert(request(b, "load", "bucket") == "sluice_loaded")
+assert(request(b, "transfer", nil) == "sluice_transferred")
 now = session.run.endsAt
-assert(request(b, "load", "bucket") == "wrong_phase")
+assert(request(b, "transfer", nil) == "wrong_phase")
 session.advance(true)
 assert(session.machine.step(now, session.accepts()) == 0)
 shift.step()
@@ -145,7 +158,7 @@ for _, p in players do
 end
 print(
 	string.format(
-		"[MACHINE fixture] %d real avatar(s): capped final contribution built once; no haul spent; shared-bin provenance retained; four-second find sold through crew shares; empty sale adds nothing",
+		"[MACHINE fixture] %d real avatar(s): capped final contribution built once; no haul spent; bin unchanged; Bucket dirt queued; nearby collection preserves provenance; only Backpack finds sold through crew shares; empty sale adds nothing",
 		#players
 	)
 )

@@ -24,8 +24,8 @@ function SluicePanel.new(root, Theme, config, send)
 	Theme.border(amount, 2)
 	local contribute = Theme.button(panel, "Contribute", "Contribute", Theme.gold)
 	local all = Theme.button(panel, "ContributeAll", "All I can", Theme.green)
-	local bucket = Theme.button(panel, "LoadBucket", "Load from bucket", Theme.gold)
-	local bin = Theme.button(panel, "LoadBin", "Load from bin", Theme.cyan)
+	local upgrades = Theme.text(panel, "Upgrades", "Upgrades coming later", 20, true)
+
 	local note = Theme.text(panel, "Note", "", 15, false)
 	local cash, remaining = 0, 0
 	contribute.Activated:Connect(function()
@@ -43,12 +43,6 @@ function SluicePanel.new(root, Theme, config, send)
 		else
 			note.Text = "Sell finds to earn Run Cash first."
 		end
-	end)
-	bucket.Activated:Connect(function()
-		send("load", "bucket")
-	end)
-	bin.Activated:Connect(function()
-		send("load", "bin")
 	end)
 	local self = {}
 	function self.open()
@@ -71,10 +65,12 @@ function SluicePanel.new(root, Theme, config, send)
 		if lanes ~= nil and busy ~= nil and output ~= nil and capacity ~= nil then
 			details.Text = if built
 				then string.format(
-					"Built! %d / %d lanes busy • %.0fs per dirt\nShared finds: %d / %d",
+					"%d / %d lanes busy • %.0fs per dirt\nDirt: %d / %d • Finished finds: %d / %d",
 					busy,
 					lanes,
 					config.sluiceProcessSeconds,
+					status:GetAttribute("SluiceDirt"),
+					config.sluiceDirtCapacity,
 					output,
 					capacity
 				)
@@ -93,9 +89,9 @@ function SluicePanel.new(root, Theme, config, send)
 			names.Text = if contributors == "" then "No contributions yet" else contributors
 		end
 		amount.Visible, contribute.Visible, all.Visible = not built, not built, not built
-		bucket.Visible, bin.Visible = built, built
+		upgrades.Visible = built
 		note.Text = if built
-			then "Load one dirt per click. Anyone can sell shared finds at the Buyer. Unsold finds disappear at the bell."
+			then "Use Quick Transfer nearby: Bucket dirt in, Backpack finds out. Sell carried finds at the Buyer. Unsold items disappear at the bell."
 			else "Voluntary contributions use your cash. No refunds. Funding resets at the bell."
 	end
 	function self.layout(w, h)
@@ -107,12 +103,13 @@ function SluicePanel.new(root, Theme, config, send)
 		details.Position, details.Size = UDim2.fromOffset(14, 48), UDim2.new(1, -28, 0, 60)
 		names.Position, names.Size = UDim2.fromOffset(14, 106), UDim2.new(1, -28, 0, 28)
 		amount.Position, amount.Size = UDim2.fromOffset(16, 138), UDim2.new(1, -32, 0, 34)
-		for _, button in { contribute, bucket } do
+		for _, button in { contribute } do
 			button.Position, button.Size = UDim2.fromOffset(14, 180), UDim2.new(0.5, -20, 0, 44)
 		end
-		for _, button in { all, bin } do
+		for _, button in { all } do
 			button.Position, button.Size = UDim2.new(0.5, 6, 0, 180), UDim2.new(0.5, -20, 0, 44)
 		end
+		upgrades.Position, upgrades.Size = UDim2.fromOffset(14, 170), UDim2.new(1, -28, 0, 50)
 		note.Position, note.Size = UDim2.fromOffset(14, 232), UDim2.new(1, -28, 1, -240)
 	end
 	return self

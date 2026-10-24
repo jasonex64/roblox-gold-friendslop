@@ -13,7 +13,7 @@ local remote = { FireClient = function() end }
 local digging = require(server.Digging).new(config, session, camp)
 local sifting = require(server.Sifting).new(config, session, camp, digging, remote)
 local economy = require(server.Economy).new(config, session, camp, digging, sifting, remote)
-local machinery = require(server.Machinery).new(session, camp, digging, economy)
+local machinery = require(server.Machinery).new(session, camp, digging, economy, sifting)
 local status = Instance.new("Folder")
 local shift = require(server.Shift).new(session, digging, sifting, economy, status, camp.CampSpawn)
 local a = players[1]
@@ -91,8 +91,20 @@ expect(machinery.request(a, "contribute", session.run.id, guid(), price), "sluic
 assert(credit().funded == price, "CREDIT: funding not recorded")
 dig()
 stand(camp.Sluice)
-expect(machinery.request(a, "load", session.run.id, guid(), "bucket"), "sluice_loaded", "load")
-assert(credit().loaded == 1 and credit().dug == 2, "CREDIT: load not recorded")
+local moved, deposited = machinery.request(a, "transfer", session.run.id, guid())
+expect(moved, "sluice_transferred", "transfer in")
+assert(deposited == 1 and credit().loaded == 1 and credit().dug == 2, "CREDIT: load not recorded")
+-- Collecting finished finds deposits no dirt, so it adds no sluice credit.
+session.machine.step(now, true) -- feeds the queued dirt into a lane
+now += config.sluiceProcessSeconds
+assert(session.machine.step(now, true) == 1, "CREDIT: sluice did not finish the dirt")
+local collected
+moved, deposited, collected = machinery.request(a, "transfer", session.run.id, guid())
+expect(moved, "sluice_transferred", "transfer out")
+assert(
+	deposited == 0 and collected == 1 and credit().loaded == 1,
+	"CREDIT: collection counted as load"
+)
 local ok = pcall(function()
 	session.record(a, "dug", 1, "fixture:dup")
 	session.record(a, "dug", 1, "fixture:dup")

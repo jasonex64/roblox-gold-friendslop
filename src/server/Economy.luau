@@ -88,8 +88,7 @@ function Economy.new(config, session, camp, digging, sifting, remote)
 				controller,
 				byId,
 				requestId,
-				session.now(),
-				session.machine
+				session.now()
 			)
 			if result == "sold" and total > 0 then
 				session.record(player, "sold", total, "sale:" .. player.UserId .. ":" .. requestId)

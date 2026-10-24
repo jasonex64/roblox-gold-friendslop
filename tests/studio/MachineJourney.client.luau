@@ -63,7 +63,7 @@ while player:GetAttribute("RunCash") < status:GetAttribute("SluicePrice") do
 end
 connection:Disconnect()
 stand(workspace.RiverCamp.Sluice)
-keyE()
+click(player.PlayerGui.GoldHUD.Root.ActionDock.SluiceStats)
 local panel = player.PlayerGui.GoldHUD.Root.SluicePanel
 assert(panel.Visible and panel.ContributeAll.Visible)
 local cash, haul = player:GetAttribute("RunCash"), player:GetAttribute("CrewHaul")
@@ -76,11 +76,16 @@ rs.ActionRequest:FireServer("dig")
 task.wait(config.digSeconds + 0.2)
 assert(player:GetAttribute("CarriedBatches") == 1)
 stand(workspace.RiverCamp.Sluice)
+click(player.PlayerGui.GoldHUD.Root.ActionDock.SluiceStats)
+click(panel.Close)
 keyE()
-click(panel.LoadBucket)
 assert(player:GetAttribute("CarriedBatches") == 0)
 task.wait(config.sluiceProcessSeconds + 0.3)
 assert(status:GetAttribute("SluiceOutput") == 1)
+assert(player:GetAttribute("CompletedFinds") == 0)
+click(player.PlayerGui.GoldHUD.Root.ActionDock.Primary)
+assert(status:GetAttribute("SluiceOutput") == 0)
+assert(player:GetAttribute("CompletedFinds") == 1)
 stand(workspace.RiverCamp.Buyer)
 assert(player:GetAttribute("HudAction") == "sell")
 local before = player:GetAttribute("RunCash")
@@ -90,10 +95,10 @@ assert(status:GetAttribute("SluiceOutput") == 0)
 assert(player:GetAttribute("RunCash") > before)
 print(
 	string.format(
-		"[MACHINE live UI] earned funding from %d real dig/sift/sales; All I Can built sluice without reducing haul; bucket button consumed one dirt; four-second shared output sold once",
+		"[MACHINE live UI] earned funding from %d real dig/sift/sales; All I Can built sluice without reducing haul; quick transfer queued bucket dirt; four-second output collected into Backpack then sold once",
 		batches
 	)
 )
 stand(workspace.RiverCamp.Sluice)
-keyE()
+click(player.PlayerGui.GoldHUD.Root.ActionDock.SluiceStats)
 return "MACHINE live UI PASS"

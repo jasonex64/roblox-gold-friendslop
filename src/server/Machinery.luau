@@ -1,13 +1,14 @@
 --!strict
 local Players = game:GetService("Players")
+local near = require(script.Parent.NearSluice)
 local Machinery = {}
-function Machinery.new(session, camp, digging, economy)
+function Machinery.new(session, camp, digging, economy, sifting)
 	local self = {}
 	function self.request(player, action, runId, requestId, payload, ...)
 		assert(player:IsA("Player") and player.Parent == Players, "Machinery: invalid player")
 		if
 			select("#", ...) ~= 0
-			or (action ~= "contribute" and action ~= "load")
+			or (action ~= "contribute" and action ~= "transfer")
 			or type(runId) ~= "string"
 			or type(requestId) ~= "string"
 			or #requestId ~= 36
@@ -22,7 +23,7 @@ function Machinery.new(session, camp, digging, economy)
 			then
 				return "invalid_request"
 			end
-		elseif payload ~= "bucket" and payload ~= "bin" then
+		elseif payload ~= nil then
 			return "invalid_request"
 		end
 		if runId ~= session.run.id then
@@ -31,25 +32,10 @@ function Machinery.new(session, camp, digging, economy)
 		if not session.acceptsPlayer(player) then
 			return "wrong_phase"
 		end
-		local character = player.Character
-		local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
-		local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
-		if not root or not humanoid or humanoid.Health <= 0 then
-			return "unavailable"
-		end
-		local params = RaycastParams.new()
-		params.FilterType = Enum.RaycastFilterType.Exclude
-		params.FilterDescendantsInstances = { character }
-		local hit =
-			workspace:Raycast(root.Position, -Vector3.yAxis * character:GetExtentsSize().Y, params)
-		if
-			humanoid.FloorMaterial == Enum.Material.Air
-			or not hit
-			or hit.Instance ~= camp.Sluice
-		then
+		if not near(player, camp.Sluice) then
 			return "stand_at_sluice"
 		end
-		local id, result, charged = tostring(player.UserId), nil, nil
+		local id, result, charged, collected = tostring(player.UserId), nil, nil, nil
 		if action == "contribute" then
 			result, charged = session.machine.contribute(
 				id,
@@ -60,14 +46,8 @@ function Machinery.new(session, camp, digging, economy)
 			)
 			player:SetAttribute("RunCash", economy.get(player).ledger.wallet)
 		else
-			result = session.machine.load(
-				id,
-				digging.get(player),
-				session.bin,
-				payload,
-				requestId,
-				session.now()
-			)
+			result, charged, collected =
+				session.machine.transfer(id, digging.get(player), sifting.get(player), requestId)
 			local count = 0
 			for _, item in digging.get(player).state.batches do
 				if item.status == "queued" or item.status == "processing" then
@@ -75,23 +55,33 @@ function Machinery.new(session, camp, digging, economy)
 				end
 			end
 			player:SetAttribute("CarriedBatches", count)
+			local finds = 0
+			for _ in sifting.get(player).outputs do
+				finds += 1
+			end
+			player:SetAttribute("CompletedFinds", finds)
 		end
-		if result == "contributed" or result == "sluice_built" or result == "sluice_loaded" then
+		if
+			result == "contributed"
+			or result == "sluice_built"
+			or result == "sluice_transferred"
+		then
 			session.activity(player)
 		end
 		if result == "contributed" or result == "sluice_built" then
 			session.record(player, "funded", charged, "fund:" .. id .. ":" .. requestId)
-		elseif result == "sluice_loaded" then
-			session.record(player, "loaded", 1, "load:" .. id .. ":" .. requestId)
+		elseif result == "sluice_transferred" and charged > 0 then
+			-- For a transfer, charged is the number of dirt deposited into the sluice.
+			session.record(player, "loaded", charged, "load:" .. id .. ":" .. requestId)
 		end
-		return result, charged
+		return result, charged, collected
 	end
 	function self.publish()
 		local state = session.machine.state
 		local built = state ~= nil and state.built
 		camp.SluiceTrough.Transparency = if built then 0 else 0.75
 		camp.Sluice.BillboardGui.TextLabel.Text = if built
-			then "SLUICE • LOAD DIRT"
+			then "SLUICE • QUICK TRANSFER"
 			else "SLUICE • CREW FUNDING"
 	end
 	return self
