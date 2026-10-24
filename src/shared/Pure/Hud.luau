@@ -23,6 +23,8 @@ function Hud.nextAction(s, config)
 		return "hit", "Hit the gold or green zone. Cancel discards this dirt."
 	elseif s.digging then
 		return "cancel", "Digging... stay on the Bank. No extra clicks needed."
+	elseif s.station == "DirtBin" then
+		return "open_bin", "Open the crew bin to deposit or take dirt."
 	elseif s.station == "Bank" then
 		if s.carried >= config.bucketBatches then
 			return "none", "Bucket full! Walk to the blue River and sift."
@@ -57,6 +59,14 @@ Hud.messages = table.freeze({
 	waiting_for_crew = "You are waiting for the next crew shift.",
 	replay_waiting = "Ready! The next shift starts when the rest of the crew is ready.",
 	crew_sale = "Crew sale! Your share was added to Run Cash.",
+	stand_at_bin = "Stand on the Crew Bin pad to share dirt.",
+	bin_changed = "The bin just changed. Try your transfer again.",
+	bin_quantity_changed = "That much dirt no longer fits or is available. Choose an amount again.",
+	bin_full = "Crew bin full. Take some dirt out to make room.",
+	bin_empty = "The crew bin is empty.",
+	bucket_empty = "Your bucket has no dirt to deposit.",
+	deposited = "Dirt added to the crew bin!",
+	withdrawn = "Dirt taken from the crew bin!",
 	out_of_range = "Stand on the brown Bank to dig.",
 	unavailable = "Wait for your character to respawn.",
 	equip_pan = "Equip your Pan at the River.",

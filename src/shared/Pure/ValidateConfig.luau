@@ -7,6 +7,7 @@ local function validate(config: any)
 	for _, key in
 		{
 			"crewCapacity",
+			"binBatchesPerMember",
 			"afkSeconds",
 			"afkWarningSeconds",
 			"readySeconds",
@@ -71,6 +72,7 @@ local function validate(config: any)
 	for _, key in
 		{
 			"crewCapacity",
+			"binBatchesPerMember",
 			"dirtPerBatch",
 			"bucketBatches",
 			"outputCapacity",

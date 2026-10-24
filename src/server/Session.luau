@@ -5,6 +5,7 @@ local Settlement = require(Shared.Pure.Settlement)
 local Hud = require(Shared.Pure.Hud)
 local validate = require(Shared.Pure.ValidateConfig)
 local Crew = require(Shared.Pure.Crew)
+local Bin = require(Shared.Pure.Bin)
 
 local Session = {}
 
@@ -12,10 +13,12 @@ local Session = {}
 function Session.new(config, clock: () -> number, runId: string)
 	validate(config)
 	local session = { run = Run.new(runId, clock(), config), crew = Crew.new(config) }
+	session.bin = Bin.new(config, session.crew)
 	function session.advance(ready: boolean)
 		Run.advance(session.run, clock(), ready)
 		if session.run.startedAt and not session.crew.locked then
 			session.crew.start(session.run.startedAt)
+			session.bin.start(session.run.id, #session.crew.members())
 		end
 	end
 	-- Future production handlers must call this gate with the current server clock.
@@ -32,9 +35,11 @@ function Session.new(config, clock: () -> number, runId: string)
 		return clock()
 	end
 	function session.finish(entries)
+		session.bin.clear()
 		return Settlement.finish(session.run, entries, Run, session.crew.haul)
 	end
 	function session.reset()
+		session.bin.reset()
 		session.crew.reset()
 		session.run = Run.reset(session.run)
 	end

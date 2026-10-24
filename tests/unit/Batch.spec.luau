@@ -63,10 +63,9 @@ return {
 		t.equal(capacity, "full_capacity")
 		request.digger = "bob"
 		local bob, accepted = Batch.create(second, request, config, rng)
-		t.equal(accepted, nil)
-		t.equal(bob.lastDigAt.bob, 12)
-		t.equal(bob.lastDigAt.alice, 11)
-		t.equal(calls(), 3)
+		t.equal(accepted, "full_capacity")
+		t.equal(bob, second)
+		t.equal(calls(), 2)
 		second.batches["batch-a"] = Batch.transition(second.batches["batch-a"], "completed")
 		request.digger = "alice"
 		local freed, freedReason = Batch.create(second, request, config, rng)

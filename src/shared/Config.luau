@@ -2,6 +2,7 @@
 return table.freeze({
 	rulesVersion = "gate-b-crew-prototype",
 	crewCapacity = 4, -- D-032
+	binBatchesPerMember = 5, -- D-033
 	afkSeconds = 60, -- D-032
 	afkWarningSeconds = 10, -- D-032
 	readySeconds = 3, -- D-024

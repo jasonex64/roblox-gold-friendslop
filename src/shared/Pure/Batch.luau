@@ -43,10 +43,8 @@ function Batch.canCreate(state: State, request: Request, config: Config): string
 	end
 	local carried = 0
 	for _, item in state.batches do
-		if
-			item.digger == request.digger
-			and (item.status == "queued" or item.status == "processing")
-		then
+		-- This state is the holder's bucket; shared dirt keeps its original digger.
+		if item.status == "queued" or item.status == "processing" then
 			carried += 1
 		end
 	end
