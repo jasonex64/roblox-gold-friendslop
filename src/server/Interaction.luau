@@ -64,6 +64,7 @@ function Interaction.new(config, session, camp, digging, sifting, economy)
 			sifting = sift.pending ~= nil,
 			cash = econ.ledger.wallet,
 			upgraded = econ.ledger.owned["shovel-2"] == true,
+			sluiceBuilt = session.machine.state ~= nil and session.machine.state.built,
 		}, config)
 		player:SetAttribute("HudAction", action)
 		player:SetAttribute("HudHint", hint)

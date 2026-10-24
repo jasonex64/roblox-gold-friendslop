@@ -26,6 +26,10 @@ function Hud.nextAction(s, config)
 	elseif s.station == "DirtBin" then
 		return "open_bin", "Open the crew bin to deposit or take dirt."
 	elseif s.station == "Sluice" then
+		if not s.sluiceBuilt then
+			return "fund_sluice",
+				"Chip in Run Cash to build the crew sluice. It builds once fully paid."
+		end
 		return "open_sluice", "Quick transfer bucket dirt and collect finds, or open sluice stats."
 	elseif s.station == "Bank" then
 		if s.carried >= config.bucketBatches then
