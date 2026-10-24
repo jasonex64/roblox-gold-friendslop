@@ -115,6 +115,34 @@ Hud.messages = table.freeze({
 	created = "Dirt ready! Take it to the River.",
 	sold = "Finished finds sold!",
 })
+-- One line per contributing player for the results screen; zero totals are left out.
+function Hud.credits(rows)
+	if #rows == 0 then
+		return "No contributions this shift."
+	end
+	local lines = {}
+	for _, row in rows do
+		local parts = {}
+		if row.dug > 0 then
+			table.insert(parts, string.format("dug %d", row.dug))
+		end
+		if row.processed > 0 then
+			table.insert(parts, string.format("sifted %d", row.processed))
+		end
+		if row.loaded > 0 then
+			table.insert(parts, string.format("sluice %d", row.loaded))
+		end
+		if row.sold > 0 then
+			table.insert(parts, string.format("sold $%d", row.sold))
+		end
+		if row.funded > 0 then
+			table.insert(parts, string.format("funded $%d", row.funded))
+		end
+		assert(#parts > 0, "Hud: credit row without contributions for " .. row.name)
+		table.insert(lines, row.name .. ": " .. table.concat(parts, " · "))
+	end
+	return table.concat(lines, "\n")
+end
 function Hud.message(code)
 	assert(Hud.messages[code], "Hud: missing feedback for " .. tostring(code))
 	return Hud.messages[code]

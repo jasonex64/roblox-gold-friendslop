@@ -102,4 +102,19 @@ return {
 			Hud.message("unhandled")
 		end)
 	end,
+	["RESULT-1 credit lines list each contributor and leave out zero totals"] = function(t)
+		local text = Hud.credits({
+			{ name = "Ana", dug = 12, processed = 8, loaded = 0, sold = 240, funded = 0 },
+			{ name = "Ben", dug = 0, processed = 0, loaded = 3, sold = 0, funded = 200 },
+		})
+		t.equal(text, "Ana: dug 12 · sifted 8 · sold $240\nBen: sluice 3 · funded $200")
+		t.errors(function()
+			Hud.credits({
+				{ name = "Cat", dug = 0, processed = 0, loaded = 0, sold = 0, funded = 0 },
+			})
+		end)
+	end,
+	["RESULT-2 an empty shift says so instead of showing a blank list"] = function(t)
+		t.equal(Hud.credits({}), "No contributions this shift.")
+	end,
 }

@@ -91,6 +91,9 @@ function Economy.new(config, session, camp, digging, sifting, remote)
 				session.now(),
 				session.machine
 			)
+			if result == "sold" and total > 0 then
+				session.record(player, "sold", total, "sale:" .. player.UserId .. ":" .. requestId)
+			end
 			for member in controllers do
 				member:SetAttribute("CrewHaul", session.crew.haul)
 				local share = payouts[tostring(member.UserId)]

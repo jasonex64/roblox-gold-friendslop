@@ -79,6 +79,11 @@ function Machinery.new(session, camp, digging, economy)
 		if result == "contributed" or result == "sluice_built" or result == "sluice_loaded" then
 			session.activity(player)
 		end
+		if result == "contributed" or result == "sluice_built" then
+			session.record(player, "funded", charged, "fund:" .. id .. ":" .. requestId)
+		elseif result == "sluice_loaded" then
+			session.record(player, "loaded", 1, "load:" .. id .. ":" .. requestId)
+		end
 		return result, charged
 	end
 	function self.publish()
