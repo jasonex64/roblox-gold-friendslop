@@ -40,6 +40,12 @@ function Camp.build(config)
 	model.Bank:SetAttribute("DirtMultiplier", config.ordinaryMultiplier)
 	station("River", Vector3.new(0, 0.1, -24), Color3.fromRGB(61, 158, 191), "RIVER • SIFT")
 	station("Buyer", Vector3.new(32, 0.1, -16), Color3.fromRGB(207, 167, 60), "BUYER • SELL")
+	station(
+		"DirtBin",
+		Vector3.new(-24, 0.1, 18),
+		Color3.fromRGB(139, 100, 72),
+		"CREW BIN • SHARE DIRT"
+	)
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "CampSpawn"
 	spawn.Anchored = true

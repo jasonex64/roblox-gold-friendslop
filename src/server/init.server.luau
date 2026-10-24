@@ -47,6 +47,15 @@ status:SetAttribute("RunId", session.run.id)
 status:SetAttribute("RulesVersion", Config.rulesVersion)
 status.Parent = ReplicatedStorage
 local shift = require(script.Shift).new(session, digging, sifting, economy, status, spawn)
+local sharedBin = require(script.SharedBin).new(session, workspace.RiverCamp, digging)
+local binRemote = Instance.new("RemoteEvent")
+binRemote.Name = "BinRequest"
+binRemote.OnServerEvent:Connect(function(player, ...)
+	local result = sharedBin.request(player, ...)
+	shift.publish()
+	binRemote:FireClient(player, result)
+end)
+binRemote.Parent = ReplicatedStorage
 local runRemote = Instance.new("RemoteEvent")
 runRemote.Name = "RunRequest"
 runRemote.OnServerEvent:Connect(function(player, ...)
