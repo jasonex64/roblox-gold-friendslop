@@ -47,6 +47,18 @@ function Camp.build(config)
 		"CREW BIN • SHARE DIRT"
 	)
 	local spawn = Instance.new("SpawnLocation")
+	station(
+		"Sluice",
+		Vector3.new(24, 0.1, 18),
+		Color3.fromRGB(110, 170, 155),
+		"SLUICE • CREW FUNDING"
+	)
+	part(
+		"SluiceTrough",
+		Vector3.new(12, 1, 4),
+		Vector3.new(24, 2, 26),
+		Color3.fromRGB(64, 155, 196)
+	)
 	spawn.Name = "CampSpawn"
 	spawn.Anchored = true
 	spawn.Neutral = true

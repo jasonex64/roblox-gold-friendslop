@@ -8,6 +8,10 @@ local function validate(config: any)
 		{
 			"crewCapacity",
 			"binBatchesPerMember",
+			"sluicePricePerMember",
+			"sluiceLanesPerMember",
+			"sluiceProcessSeconds",
+			"sluiceOutputPerMember",
 			"afkSeconds",
 			"afkWarningSeconds",
 			"readySeconds",
@@ -73,6 +77,9 @@ local function validate(config: any)
 		{
 			"crewCapacity",
 			"binBatchesPerMember",
+			"sluicePricePerMember",
+			"sluiceLanesPerMember",
+			"sluiceOutputPerMember",
 			"dirtPerBatch",
 			"bucketBatches",
 			"outputCapacity",

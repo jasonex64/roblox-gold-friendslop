@@ -8,7 +8,7 @@ function Economy.new(config, dig, sift, Batch, Ledger)
 	}
 	local shovel = { id = "shovel-2", price = config.shovelUpgradePrice, prerequisites = {} }
 	-- Prepare without mutation so the crew can validate every recipient before commit.
-	function self.prepareSale(requestId)
+	function self.prepareSale(requestId, machine)
 		if self.ledger.requests[requestId] then
 			return nil, "duplicate_request"
 		end
@@ -16,6 +16,18 @@ function Economy.new(config, dig, sift, Batch, Ledger)
 		prepared.finds = table.clone(self.ledger.finds)
 		local batches = table.clone(dig.state.batches)
 		local ids = {}
+		local shared = nil
+		if machine and machine.state then
+			shared = machine.prepareSale()
+			for id, find in machine.outputs do
+				assert(
+					find.id == id and not prepared.finds[id] and not sift.outputs[id],
+					"Economy: duplicate shared output"
+				)
+				prepared.finds[id] = { baseValue = find.value, sold = false }
+				table.insert(ids, id)
+			end
+		end
 		for id, find in sift.outputs do
 			local batch = batches[id]
 			assert(
@@ -36,6 +48,8 @@ function Economy.new(config, dig, sift, Batch, Ledger)
 		local state = table.clone(dig.state)
 		state.batches = batches
 		return {
+			machine = machine,
+			shared = shared,
 			ledger = ledger,
 			state = state,
 			amount = amount,
@@ -44,6 +58,9 @@ function Economy.new(config, dig, sift, Batch, Ledger)
 			nil
 	end
 	function self.commitSale(prepared)
+		if prepared.shared then
+			prepared.machine.commitSale(prepared.shared)
+		end
 		self.ledger = prepared.ledger
 		dig.state = prepared.state
 		sift.outputs = {}
