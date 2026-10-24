@@ -57,6 +57,7 @@ local feedback = require(script.Toast).new(root, Theme)
 local dock = Theme.surface(root, "ActionDock", Theme.white)
 local primary = Theme.button(dock, "Primary", "Get ready!", Theme.green)
 local buy = Theme.button(dock, "Upgrade", "Shovel", Theme.gold)
+local sluiceStats = Theme.button(dock, "SluiceStats", "Sluice stats", Theme.cyan)
 local binPanel = require(script.BinPanel).new(root, Theme, function(action, quantity)
 	binRemote:FireServer(
 		action,
@@ -228,12 +229,20 @@ local function activate()
 		if action == "open_bin" then
 			binPanel.open()
 		elseif action == "open_sluice" then
-			sluicePanel.open()
+			machineRemote:FireServer(
+				"transfer",
+				status:GetAttribute("RunId"),
+				game:GetService("HttpService"):GenerateGUID(false)
+			)
 		elseif action and action ~= "none" and action ~= "hit" then
 			actionRemote:FireServer(action)
 		end
 	end
 end
+sluiceStats.Activated:Connect(function()
+	helpPanel.Visible = false
+	sluicePanel.open()
+end)
 primary.Activated:Connect(activate)
 hit.Activated:Connect(activate)
 cancel.Activated:Connect(function()
@@ -244,7 +253,7 @@ buy.Activated:Connect(function()
 end)
 local actions = {
 	open_bin = "open crew bin",
-	open_sluice = "open crew sluice",
+	open_sluice = "quick transfer",
 	dig = "dig",
 	sift = "sift",
 	sell = "sell all",
@@ -312,6 +321,12 @@ local function refresh()
 	primary.Size = UDim2.new(1, if buy.Visible then -145 else -20, 0, 44)
 	buy.Position = if primary.Visible then UDim2.new(1, -125, 0, 10) else UDim2.fromOffset(10, 10)
 	buy.Size = if primary.Visible then UDim2.fromOffset(115, 44) else UDim2.new(1, -20, 0, 44)
+	sluiceStats.Visible = action == "open_sluice"
+	if sluiceStats.Visible then
+		primary.Size = UDim2.new(0.6, -16, 0, 44)
+		sluiceStats.Position = UDim2.new(0.6, 0, 0, 10)
+		sluiceStats.Size = UDim2.new(0.4, -10, 0, 44)
+	end
 	dock.Visible = current == nil and phase == "running" and (primary.Visible or buy.Visible)
 	local binCount, binCapacity =
 		status:GetAttribute("BinCount"), status:GetAttribute("BinCapacity")
@@ -363,8 +378,17 @@ actionRemote.OnClientEvent:Connect(feedbackCode)
 economyRemote.OnClientEvent:Connect(feedbackCode)
 runRemote.OnClientEvent:Connect(feedbackCode)
 binRemote.OnClientEvent:Connect(feedbackCode)
-machineRemote.OnClientEvent:Connect(function(code, charged)
-	if code == "contributed" or code == "sluice_built" then
+machineRemote.OnClientEvent:Connect(function(code, charged, collected)
+	if code == "sluice_transferred" then
+		assert(
+			type(charged) == "number" and type(collected) == "number",
+			"HUD: transfer counts missing"
+		)
+		feedback.show(
+			string.format("Deposited %d dirt • Collected %d finds!", charged, collected),
+			collected > 0
+		)
+	elseif code == "contributed" or code == "sluice_built" then
 		assert(type(charged) == "number", "HUD: missing contribution amount")
 		feedback.show(
 			string.format("Contributed $%d! %s", charged, Hud.message(code)),
