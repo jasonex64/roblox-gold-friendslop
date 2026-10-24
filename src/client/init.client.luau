@@ -14,6 +14,7 @@ local siftRemote = ReplicatedStorage:WaitForChild("SiftRequest")
 local economyRemote = ReplicatedStorage:WaitForChild("EconomyRequest")
 local runRemote = ReplicatedStorage:WaitForChild("RunRequest")
 local binRemote = ReplicatedStorage:WaitForChild("BinRequest")
+local machineRemote = ReplicatedStorage:WaitForChild("MachineRequest")
 local gui = Instance.new("ScreenGui")
 gui.Name = "GoldHUD"
 gui.ResetOnSpawn = false
@@ -65,6 +66,14 @@ local binPanel = require(script.BinPanel).new(root, Theme, function(action, quan
 	)
 end)
 local helpPanel = Theme.surface(root, "Guide", Theme.white)
+local sluicePanel = require(script.SluicePanel).new(root, Theme, Config, function(action, payload)
+	machineRemote:FireServer(
+		action,
+		status:GetAttribute("RunId"),
+		game:GetService("HttpService"):GenerateGUID(false),
+		payload
+	)
+end)
 helpPanel.Visible = true
 helpPanel.ZIndex = 5
 local helpTitle = Theme.text(helpPanel, "Title", "How to Strike Gold!", 27, true)
@@ -170,6 +179,7 @@ local function layout()
 	place(primary, 10, 10, dw - 20, 44)
 	place(buy, dw - 125, 10, 115, 44)
 	binPanel.layout(w, h)
+	sluicePanel.layout(w, h)
 	local sw = math.min(w - 32, 360)
 	local sh = 202
 	place(siftPanel, w - sw - 12, math.max(6, h - sh - (if compact then 6 else 24)), sw, sh)
@@ -217,6 +227,8 @@ local function activate()
 		local action = player:GetAttribute("HudAction")
 		if action == "open_bin" then
 			binPanel.open()
+		elseif action == "open_sluice" then
+			sluicePanel.open()
 		elseif action and action ~= "none" and action ~= "hit" then
 			actionRemote:FireServer(action)
 		end
@@ -232,6 +244,7 @@ buy.Activated:Connect(function()
 end)
 local actions = {
 	open_bin = "open crew bin",
+	open_sluice = "open crew sluice",
 	dig = "dig",
 	sift = "sift",
 	sell = "sell all",
@@ -246,6 +259,11 @@ local function refresh()
 	local phase = status:GetAttribute("Phase")
 	local member = player:GetAttribute("CrewMember") == true
 	local shareStatus = player:GetAttribute("CashShareStatus")
+	sluicePanel.update(
+		member and phase == "running" and player:GetAttribute("Station") == "Sluice",
+		status,
+		player:GetAttribute("RunCash")
+	)
 	local crewCount = status:GetAttribute("CrewCount")
 	if not member then
 		crewNotice.Text = "Waiting for next shift"
@@ -345,6 +363,17 @@ actionRemote.OnClientEvent:Connect(feedbackCode)
 economyRemote.OnClientEvent:Connect(feedbackCode)
 runRemote.OnClientEvent:Connect(feedbackCode)
 binRemote.OnClientEvent:Connect(feedbackCode)
+machineRemote.OnClientEvent:Connect(function(code, charged)
+	if code == "contributed" or code == "sluice_built" then
+		assert(type(charged) == "number", "HUD: missing contribution amount")
+		feedback.show(
+			string.format("Contributed $%d! %s", charged, Hud.message(code)),
+			code == "sluice_built"
+		)
+	else
+		feedbackCode(code)
+	end
+end)
 ReplicatedStorage:WaitForChild("DigRequest").OnClientEvent:Connect(feedbackCode)
 siftRemote.OnClientEvent:Connect(function(code, view, find)
 	local hitGrade = if code == "completed" and find then find.results[#find.results] else code
