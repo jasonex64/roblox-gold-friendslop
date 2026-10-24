@@ -120,9 +120,8 @@ continue/revise decision; T-025 and T-026 are pure prep that is already merged.
 Parallel split: one person takes the clock track (T-030, then T-031), the other the machine
 track (T-032, then T-033). The tracks share only Config and the client HUD file, so keep
 those edits small and merge often. T-030 owns manual rush speed; T-032 owns rush speed for
-sluice lanes. Human decisions needed first: rich bank distance and how the rush and pan
-upgrades affect the sifting minigame (T-030, T-031), shovel tier three, tier-two and hopper
-prices, and what the hopper feeds from now that D-036 removed bin loading (T-033).
+sluice lanes. Design decisions D-039..D-044 (2026-10-24) settle the rich bank distance, rush
+sifting, shovel and pan tiers, sluice tier two and the hopper, so the tickets need no new numbers.
 
 Exit: humans play full shifts, an approved EXP records when crews buy tools and machines
 and use the night bank and rush, and a recorded continue/revise decision closes the gate.
