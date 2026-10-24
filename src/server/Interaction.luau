@@ -24,7 +24,12 @@ function Interaction.new(config, session, camp, digging, sifting, economy)
 					return "Bank", true
 				elseif pad == camp.Camp or pad == camp.CampSpawn then
 					return "Camp", true
-				elseif pad == camp.River or pad == camp.Buyer or pad == camp.DirtBin then
+				elseif
+					pad == camp.River
+					or pad == camp.Buyer
+					or pad == camp.DirtBin
+					or pad == camp.Sluice
+				then
 					return pad.Name, true
 				end
 			end
@@ -51,6 +56,13 @@ function Interaction.new(config, session, camp, digging, sifting, economy)
 			alive = alive,
 			carried = carried,
 			outputs = outputs,
+			sharedOutputs = (function()
+				local count = 0
+				for _ in session.machine.outputs do
+					count += 1
+				end
+				return count
+			end)(),
 			digging = dig.pending ~= nil,
 			sifting = sift.pending ~= nil,
 			cash = econ.ledger.wallet,

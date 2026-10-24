@@ -25,6 +25,8 @@ function Hud.nextAction(s, config)
 		return "cancel", "Digging... stay on the Bank. No extra clicks needed."
 	elseif s.station == "DirtBin" then
 		return "open_bin", "Open the crew bin to deposit or take dirt."
+	elseif s.station == "Sluice" then
+		return "open_sluice", "Fund the crew sluice, then load dirt from your bucket or the bin."
 	elseif s.station == "Bank" then
 		if s.carried >= config.bucketBatches then
 			return "none", "Bucket full! Walk to the blue River and sift."
@@ -38,7 +40,7 @@ function Hud.nextAction(s, config)
 		end
 		return "sift", "Sift dirt here. Hit each zone when the needle reaches it."
 	elseif s.station == "Buyer" then
-		if s.outputs == 0 then
+		if s.outputs == 0 and (s.sharedOutputs == nil or s.sharedOutputs == 0) then
 			return "none", "No finds to sell. Dig at the Bank, then sift at the River."
 		end
 		return "sell", "Sell all finished finds. Spending cash never lowers Crew Haul."
@@ -59,6 +61,16 @@ Hud.messages = table.freeze({
 	waiting_for_crew = "You are waiting for the next crew shift.",
 	replay_waiting = "Ready! The next shift starts when the rest of the crew is ready.",
 	crew_sale = "Crew sale! Your share was added to Run Cash.",
+	stand_at_sluice = "Stand on the Sluice pad to contribute or load dirt.",
+	contributed = "Contribution added to the crew sluice!",
+	sluice_built = "Crew sluice built! Load dirt to get it running.",
+	sluice_loaded = "Dirt loaded! Sell finished sluice finds at the Buyer.",
+	insufficient_funds = "Not enough Run Cash for that contribution.",
+	already_built = "The crew sluice is already built.",
+	not_built = "Finish funding the crew sluice first.",
+	lanes_full = "All sluice lanes are busy. Wait for a lane to finish.",
+	output_full = "Sluice output full. Sell shared finds at the Buyer.",
+	duplicate_batch = "This dirt has already been loaded.",
 	stand_at_bin = "Stand on the Crew Bin pad to share dirt.",
 	bin_changed = "The bin just changed. Try your transfer again.",
 	bin_quantity_changed = "That much dirt no longer fits or is available. Choose an amount again.",

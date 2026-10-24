@@ -56,6 +56,16 @@ binRemote.OnServerEvent:Connect(function(player, ...)
 	binRemote:FireClient(player, result)
 end)
 binRemote.Parent = ReplicatedStorage
+local machinery = require(script.Machinery).new(session, workspace.RiverCamp, digging, economy)
+local machineRemote = Instance.new("RemoteEvent")
+machineRemote.Name = "MachineRequest"
+machineRemote.OnServerEvent:Connect(function(player, ...)
+	local result, charged = machinery.request(player, ...)
+	shift.publish()
+	machinery.publish()
+	machineRemote:FireClient(player, result, charged)
+end)
+machineRemote.Parent = ReplicatedStorage
 local runRemote = Instance.new("RemoteEvent")
 runRemote.Name = "RunRequest"
 runRemote.OnServerEvent:Connect(function(player, ...)
@@ -198,7 +208,9 @@ RunService.Heartbeat:Connect(function()
 	if session.accepts() then
 		digging.step()
 		sifting.step()
+		session.machine.step(session.now(), session.accepts())
 	end
+	machinery.publish()
 	for _, player in players do
 		interaction.publish(player)
 	end

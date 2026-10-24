@@ -4,6 +4,35 @@ local Shift = {}
 function Shift.new(session, digging, sifting, economy, status, spawn)
 	local self = { result = nil }
 	function self.publish()
+		local machine = session.machine
+		local state, settings = machine.state, machine.settings
+		local busy, outputs = 0, 0
+		if state then
+			for _ in state.lanes do
+				busy += 1
+			end
+			for _ in state.output do
+				outputs += 1
+			end
+		end
+		local names = {}
+		for id in machine.contributors do
+			table.insert(names, id)
+		end
+		table.sort(names)
+		local contributions = {}
+		for _, id in names do
+			local entry = machine.contributors[id]
+			table.insert(contributions, string.format("%s: $%d", entry.name, entry.amount))
+		end
+		status:SetAttribute("SluiceContributors", table.concat(contributions, " • "))
+		status:SetAttribute("SluiceBuilt", state ~= nil and state.built)
+		status:SetAttribute("SluiceFunded", if state then state.funded else 0)
+		status:SetAttribute("SluicePrice", if settings then settings.price else 0)
+		status:SetAttribute("SluiceLanes", if settings then settings.lanes else 0)
+		status:SetAttribute("SluiceBusy", busy)
+		status:SetAttribute("SluiceOutput", outputs)
+		status:SetAttribute("SluiceOutputCapacity", if settings then settings.outputCapacity else 0)
 		status:SetAttribute("BinCount", session.bin.count())
 		status:SetAttribute("BinCapacity", session.bin.capacity)
 		status:SetAttribute("BinRevision", session.bin.revision)
