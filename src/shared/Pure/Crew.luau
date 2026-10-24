@@ -98,12 +98,12 @@ function Crew.new(config)
 		end
 		return "active"
 	end
-	function self.sale(id, controller, controllers, requestId, now, machine)
+	function self.sale(id, controller, controllers, requestId, now)
 		if not self.locked or not self.connected[id] or not self.admitted[id] then
 			return "waiting_for_crew", 0, 0, {}
 		end
 		assert(now >= self.lastActive[id], "Crew: backwards sale clock")
-		local prepared, reason = controller.prepareSale(requestId, machine)
+		local prepared, reason = controller.prepareSale(requestId)
 		if not prepared then
 			return reason, 0, 0, {}
 		end

@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local Hud = require(game.ReplicatedStorage.Shared.Pure.Hud)
+local nearSluice = require(script.Parent.NearSluice)
 local Interaction = {}
 function Interaction.new(config, session, camp, digging, sifting, economy)
 	local self = {}
@@ -11,6 +12,9 @@ function Interaction.new(config, session, camp, digging, sifting, economy)
 		local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
 		if not humanoid or not root or humanoid.Health <= 0 then
 			return "Away", false
+		end
+		if nearSluice(player, camp.Sluice) then
+			return "Sluice", true
 		end
 		local params = RaycastParams.new()
 		params.FilterType = Enum.RaycastFilterType.Exclude
@@ -56,13 +60,6 @@ function Interaction.new(config, session, camp, digging, sifting, economy)
 			alive = alive,
 			carried = carried,
 			outputs = outputs,
-			sharedOutputs = (function()
-				local count = 0
-				for _ in session.machine.outputs do
-					count += 1
-				end
-				return count
-			end)(),
 			digging = dig.pending ~= nil,
 			sifting = sift.pending ~= nil,
 			cash = econ.ledger.wallet,

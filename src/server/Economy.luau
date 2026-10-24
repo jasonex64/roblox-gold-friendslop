@@ -88,8 +88,7 @@ function Economy.new(config, session, camp, digging, sifting, remote)
 				controller,
 				byId,
 				requestId,
-				session.now(),
-				session.machine
+				session.now()
 			)
 			for member in controllers do
 				member:SetAttribute("CrewHaul", session.crew.haul)
