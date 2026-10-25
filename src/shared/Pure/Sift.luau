@@ -7,6 +7,15 @@ end
 
 function Sift.new(config, dig, Batch, SkillCheck, rng)
 	local self = { pending = nil, outputs = {}, reserved = 0 }
+	-- Injected by the server for shift timing; standalone sifts use a constant rate.
+	function self.sweepDuration(_start, settings, rate)
+		return settings.siftSweepSeconds / rate
+	end
+	local function durationAt(start, settings, rate)
+		local duration = self.sweepDuration(start, settings, rate)
+		assert(finite(duration) and duration > 0, "Sift: invalid sweep duration")
+		return duration
+	end
 	local function countOutputs()
 		local count = 0
 		for _ in self.outputs do
@@ -45,14 +54,17 @@ function Sift.new(config, dig, Batch, SkillCheck, rng)
 		-- Normalized sweep geometry saturates at a full sweep, retaining proportions.
 		local starterWidth = settings.siftPerfectWidth + 2 * settings.siftGoodWidth
 		scale = math.min(scale, 1 / starterWidth)
-		local duration = settings.siftSweepSeconds / rate
+		local duration = durationAt(now, settings, rate)
 		local checks = {}
+		local nextStart = now
 		for index = 1, settings.siftChecks do
-			checks[index] = SkillCheck.start(now + (index - 1) * duration, {
+			local seconds = durationAt(nextStart, settings, rate)
+			checks[index] = SkillCheck.start(nextStart, {
 				zoneWidth = starterWidth * scale,
 				perfectWidth = settings.siftPerfectWidth * scale,
-				needleSpeed = 1 / duration,
+				needleSpeed = 1 / seconds,
 			}, rng, checks[index - 1])
+			nextStart += seconds
 		end
 		local batches = table.clone(dig.state.batches)
 		batches[selected.id] = Batch.transition(selected, "processing")
@@ -66,7 +78,7 @@ function Sift.new(config, dig, Batch, SkillCheck, rng)
 			checks = checks,
 			index = 1,
 			startedAt = now,
-			endsAt = now + settings.siftChecks * duration,
+			endsAt = nextStart,
 			duration = duration,
 			rate = rate,
 			settings = settings,
@@ -105,11 +117,15 @@ function Sift.new(config, dig, Batch, SkillCheck, rng)
 		local result = SkillCheck.grade(check, now)
 		pending.results[index] = result
 		-- D-021: accepted hits resolve immediately; the next sweep starts now.
-		local saved = check.startedAt + pending.duration - now
+		local nextStart = now
 		for nextIndex = index + 1, #pending.checks do
-			pending.checks[nextIndex].startedAt -= saved
+			local nextCheck = pending.checks[nextIndex]
+			local seconds = durationAt(nextStart, pending.settings, pending.rate)
+			nextCheck.startedAt = nextStart
+			nextCheck.needleSpeed = 1 / seconds
+			nextStart += seconds
 		end
-		pending.endsAt -= saved
+		pending.endsAt = nextStart
 		local _, find = self.step(now, true)
 		return result, find
 	end
@@ -126,6 +142,7 @@ function Sift.new(config, dig, Batch, SkillCheck, rng)
 		assert(now >= pending.startedAt, "Sift: step precedes start")
 		while pending.index <= #pending.checks do
 			local check = pending.checks[pending.index]
+			pending.duration = 1 / check.needleSpeed
 			if not check.graded and now < check.startedAt + pending.duration then
 				return "sifting"
 			end
