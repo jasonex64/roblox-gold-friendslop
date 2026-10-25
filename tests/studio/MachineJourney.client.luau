@@ -63,7 +63,10 @@ while player:GetAttribute("RunCash") < status:GetAttribute("SluicePrice") do
 end
 connection:Disconnect()
 stand(workspace.RiverCamp.Sluice)
-click(player.PlayerGui.GoldHUD.Root.ActionDock.SluiceStats)
+-- Before the sluice is built, its main action (E) opens funding and the stats button is hidden.
+assert(player:GetAttribute("HudAction") == "fund_sluice")
+assert(not player.PlayerGui.GoldHUD.Root.ActionDock.SluiceStats.Visible)
+keyE()
 local panel = player.PlayerGui.GoldHUD.Root.SluicePanel
 assert(panel.Visible and panel.ContributeAll.Visible)
 local cash, haul = player:GetAttribute("RunCash"), player:GetAttribute("CrewHaul")
