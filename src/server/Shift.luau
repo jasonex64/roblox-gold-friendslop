@@ -4,6 +4,15 @@ local Shift = {}
 function Shift.new(session, digging, sifting, economy, status, spawn)
 	local self = { result = nil }
 	function self.publish()
+		local phase, bankSeconds, rushSeconds = session.timeline()
+		status:SetAttribute("ShiftPhase", phase)
+		status:SetAttribute("BankSeconds", bankSeconds)
+		status:SetAttribute("RushSeconds", rushSeconds)
+		local bank = spawn.Parent:FindFirstChild("RichBank")
+		assert(bank, "Shift: rich bank missing")
+		bank.BillboardGui.TextLabel.Text = if phase == "night"
+			then "RICH BANK • OPEN"
+			else "RICH BANK • CLOSED"
 		local machine = session.machine
 		local state, settings = machine.state, machine.settings
 		local busy, outputs = 0, 0

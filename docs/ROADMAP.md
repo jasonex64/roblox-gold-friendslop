@@ -98,3 +98,31 @@ monetization and art remain separate later work. T-018 is deferred and does not 
 - T-024 Upgrade shared camp dirt bin capacity (depends on T-020). Explicitly deferred by owner under D-034; not a Gate B exit requirement.
 
 
+
+## M3 — Gate C complete shift
+
+Planned by T-029 on 2026-10-24. DESIGN §15 Gate C: hopper, remaining shovel and pan tiers,
+night bank, final surge and replay results. Gate C answers "does the ten-minute structure
+produce useful decisions and a desire to retry?" Wiring waits on the T-022 Gate B
+continue/revise decision; T-025 and T-026 are pure prep that is already merged.
+
+| Ticket | Outcome | Depends on | Server/client files |
+|---|---|---|---|
+| T-025 | Pure shift timeline (done) | T-001 | new pure module only |
+| T-026 | Pure contribution credit (done) | T-001 | new pure module only |
+| T-027 | Results-screen contributions (PR #35) | T-021, T-026 | Session, Digging, Sifting, Economy, Machinery, Shift, client results |
+| T-030 | Night bank and final rush | T-022, T-025 | Camp, Digging, Sifting, Shift, Interaction, client HUD, Config |
+| T-031 | Remaining shovel and pan tiers | T-022, T-030 | Economy, Digging, Sifting, client shop, Config |
+| T-032 | Sluice tier two and lane rush speed | T-022, T-025 | Machine, Machinery, SluicePanel, Config |
+| T-033 | Hopper attachment | T-022, T-032 | Machine, Bin, Machinery, SharedBin, SluicePanel, Config |
+| T-034 | Gate C human validation and decision | T-030..T-033 (and T-027 merged) | docs and tests only |
+
+Parallel split: one person takes the clock track (T-030, then T-031), the other the machine
+track (T-032, then T-033). The tracks share only Config and the client HUD file, so keep
+those edits small and merge often. T-030 owns manual rush speed; T-032 owns rush speed for
+sluice lanes. Design decisions D-039..D-044 (2026-10-24) settle the rich bank distance, rush
+sifting, shovel and pan tiers, sluice tier two and the hopper, so the tickets need no new numbers.
+
+Exit: humans play full shifts, an approved EXP records when crews buy tools and machines
+and use the night bank and rush, and a recorded continue/revise decision closes the gate.
+Gate D (classes, pets, discovery book, saved rewards) stays out of M3.

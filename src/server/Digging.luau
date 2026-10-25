@@ -6,6 +6,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Batch = require(Shared.Pure.Batch)
 local Dig = require(Shared.Pure.Dig)
 local Loot = require(Shared.Pure.Loot)
+local Timeline = require(Shared.Pure.Timeline)
 
 local Digging = {}
 function Digging.new(config, session, camp)
@@ -21,6 +22,11 @@ function Digging.new(config, session, camp)
 			outcome.sourceMultiplier = request.multiplier
 			return outcome
 		end)
+		controllers[player].finishAt = function(start, seconds)
+			assert(session.run.startedAt, "Digging: missing shift start")
+			return session.run.startedAt
+				+ Timeline.finishAt(start - session.run.startedAt, seconds, config)
+		end
 		player:SetAttribute("CarriedBatches", 0)
 		player:SetAttribute("OpeningCount", 0)
 	end
@@ -69,6 +75,13 @@ function Digging.new(config, session, camp)
 			return if phase == "running" then "out_of_range" else "wrong_phase"
 		end
 		local source = pad:GetAttribute("DigSource")
+		if phase ~= "running" then
+			return "wrong_phase"
+		end
+		local reason = Timeline.canDig(source, session.now() - session.run.startedAt, config)
+		if reason then
+			return reason
+		end
 		local multiplier = pad:GetAttribute("DirtMultiplier")
 		assert(type(source) == "string" and source ~= "", "Digging: pad DigSource required")
 		assert(
@@ -81,14 +94,15 @@ function Digging.new(config, session, camp)
 			multiplier = multiplier,
 			digger = tostring(player.UserId),
 			distance = 0,
-			now = os.clock(),
+			now = session.now(),
 		}, phase)
 	end
 	function self.step()
 		for player, controller in controllers do
 			local pad, phase = context(player)
 			local source = if pad then pad:GetAttribute("DigSource") else nil
-			local result = controller.step(os.clock(), if pad then 0 else math.huge, phase, source)
+			local result =
+				controller.step(session.now(), if pad then 0 else math.huge, phase, source)
 			if result == "created" then
 				session.activity(player)
 				local count = 0

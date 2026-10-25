@@ -41,7 +41,7 @@ function Toast.new(root, theme)
 		-- Keep the toast centered in the gap between the persistent HUD cards.
 		local available = width - 2 * (12 + cell * 2 + 8) - 16
 		local narrow = available < 100
-		layer.Position = UDim2.new(0.5, 0, 0, if narrow then 116 else 8)
+		layer.Position = UDim2.new(0.5, 0, 0, if narrow then 208 else 8)
 		layer.Size = UDim2.fromOffset(if narrow then width - 32 else math.min(360, available), 88)
 	end
 	local function render()

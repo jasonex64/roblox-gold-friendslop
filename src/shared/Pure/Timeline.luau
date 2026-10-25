@@ -82,4 +82,23 @@ function Timeline.finishAt(start: number, baseSeconds: number, config: Config): 
 	return config.rushStart + remaining / rate
 end
 
+-- D-040 snapshots each sweep at its own start, never accelerates an active one.
+function Timeline.sweepSeconds(
+	start: number,
+	normalSeconds: number,
+	rushSeconds: number,
+	config: Config
+): number
+	validate(config)
+	elapsedTime(start, "sweep start")
+	assert(
+		normalSeconds > 0
+			and normalSeconds < math.huge
+			and rushSeconds > 0
+			and rushSeconds < normalSeconds,
+		"Timeline: invalid sweep durations"
+	)
+	return if start >= config.rushStart then rushSeconds else normalSeconds
+end
+
 return Timeline

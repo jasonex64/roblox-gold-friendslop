@@ -53,6 +53,7 @@ local help = Theme.button(top, "Help", "?", Theme.purple)
 local bucketBox, bucketCount = stat("Bucket", Theme.cyan)
 local backpackBox, backpackCount = stat("Backpack", Theme.purple)
 local crewNotice = Theme.text(top, "CrewStatus", "", 14, true)
+local timelineNotice = Theme.text(top, "ShiftTimeline", "", 14, true)
 local feedback = require(script.Toast).new(root, Theme)
 local dock = Theme.surface(root, "ActionDock", Theme.white)
 local primary = Theme.button(dock, "Primary", "Get ready!", Theme.green)
@@ -173,6 +174,7 @@ local function layout()
 	place(bucketBox, 0, 56, cell, statHeight)
 	place(backpackBox, cell + 8, 56, cell, statHeight)
 	place(crewNotice, topWidth - cell - 52, 54, cell + 52, 52)
+	place(timelineNotice, 0, 110, topWidth, if w < 600 then 88 else 46)
 	feedback.layout(w, cell)
 	local dw = math.min(w - 32, 360)
 	local bottom = if UserInputService.TouchEnabled then 88 else 16
@@ -287,8 +289,16 @@ local function refresh()
 		crewNotice.Text = string.format("Crew: %d / %d", crewCount, Config.crewCapacity)
 	end
 	local seconds = status:GetAttribute("RemainingSeconds")
+	local shiftPhase = status:GetAttribute("ShiftPhase")
+	local bankSeconds, rushSeconds =
+		status:GetAttribute("BankSeconds"), status:GetAttribute("RushSeconds")
+	timelineNotice.Visible = phase == "running"
+	if shiftPhase and bankSeconds ~= nil and rushSeconds ~= nil and seconds ~= nil then
+		timelineNotice.Text = Hud.timeline(shiftPhase, bankSeconds, rushSeconds, seconds)
+	end
 	if phase and seconds ~= nil then
-		timerBox.Title.Text = phase:gsub("^%l", string.upper)
+		local title = if phase == "running" and shiftPhase then shiftPhase else phase
+		timerBox.Title.Text = title:gsub("^%l", string.upper)
 		timer.Text = string.format("%02d:%02d", math.floor(seconds / 60), seconds % 60)
 	end
 	local money, total = player:GetAttribute("RunCash"), player:GetAttribute("CrewHaul")
