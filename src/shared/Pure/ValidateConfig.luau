@@ -7,6 +7,13 @@ local function validate(config: any)
 	for _, key in
 		{
 			"crewCapacity",
+			"nightStart",
+			"dawnStart",
+			"rushStart",
+			"rushSpeedup",
+			"richMultiplier",
+			"richBankDistance",
+			"rushSiftSweepSeconds",
 			"binBatchesPerMember",
 			"sluicePricePerMember",
 			"sluiceLanesPerMember",
@@ -44,6 +51,20 @@ local function validate(config: any)
 			"Config." .. key .. " must be positive and finite"
 		)
 	end
+	assert(
+		type(config.richSource) == "string" and config.richSource ~= "",
+		"Config.richSource required"
+	)
+	assert(
+		config.nightStart < config.dawnStart
+			and config.dawnStart < config.rushStart
+			and config.rushStart < config.shiftSeconds,
+		"Config.timeline boundaries must increase within shift"
+	)
+	assert(
+		config.rushSiftSweepSeconds < config.siftSweepSeconds,
+		"Config.rush sweep must be faster"
+	)
 	for _, key in { "loot", "crates" } do
 		assert(type(config[key]) == "table" and #config[key] > 0, "Config." .. key .. " required")
 		for _, entry in config[key] do

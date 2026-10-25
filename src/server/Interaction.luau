@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local Hud = require(game.ReplicatedStorage.Shared.Pure.Hud)
+local Timeline = require(game.ReplicatedStorage.Shared.Pure.Timeline)
 local nearSluice = require(script.Parent.NearSluice)
 local Interaction = {}
 function Interaction.new(config, session, camp, digging, sifting, economy)
@@ -25,6 +26,16 @@ function Interaction.new(config, session, camp, digging, sifting, economy)
 			local pad = hit.Instance
 			if pad:IsDescendantOf(camp) then
 				if pad:GetAttribute("DigSource") then
+					if
+						session.accepts()
+						and Timeline.canDig(
+							pad:GetAttribute("DigSource"),
+							session.now() - session.run.startedAt,
+							config
+						)
+					then
+						return "ClosedBank", true
+					end
 					return "Bank", true
 				elseif pad == camp.Camp or pad == camp.CampSpawn then
 					return "Camp", true
