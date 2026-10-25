@@ -38,6 +38,21 @@ function Camp.build(config)
 	station("Bank", Vector3.new(-32, 0.1, -16), Color3.fromRGB(165, 111, 62), "BANK • DIG")
 	model.Bank:SetAttribute("DigSource", "Bank")
 	model.Bank:SetAttribute("DirtMultiplier", config.ordinaryMultiplier)
+	station(
+		config.richSource,
+		Vector3.new(0, 0.1, 24 - config.richBankDistance),
+		Color3.fromRGB(123, 75, 165),
+		"RICH BANK • CLOSED"
+	)
+	model[config.richSource]:SetAttribute("DigSource", config.richSource)
+	model[config.richSource]:SetAttribute("DirtMultiplier", config.richMultiplier)
+	-- Walkable route to the farther bank; width/thickness are placeholder geometry.
+	part(
+		"RichBankPath",
+		Vector3.new(24, 2, config.richBankDistance),
+		Vector3.new(0, -1, 24 - config.richBankDistance / 2),
+		Color3.fromRGB(100, 133, 83)
+	)
 	station("River", Vector3.new(0, 0.1, -24), Color3.fromRGB(61, 158, 191), "RIVER • SIFT")
 	station("Buyer", Vector3.new(32, 0.1, -16), Color3.fromRGB(207, 167, 60), "BUYER • SELL")
 	station(

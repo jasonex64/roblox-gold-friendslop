@@ -32,6 +32,9 @@ function Hud.nextAction(s, config)
 			return "none", "Bucket full! Walk to the blue River and sift."
 		end
 		return "dig", "Dig one batch, then walk to the blue River."
+	elseif s.station == "ClosedBank" then
+		return "none",
+			"Rich bank closed. Use the ordinary Bank; already dug rich dirt keeps its bonus."
 	elseif s.station == "River" then
 		if s.outputs >= config.outputCapacity then
 			return "none", "Find bag full! Walk to the gold Buyer and sell."
@@ -56,6 +59,7 @@ function Hud.nextAction(s, config)
 	return "none", "Walk to the brown Bank to dig your first batch."
 end
 Hud.messages = table.freeze({
+	rich_bank_closed = "Rich bank closed. New rich digs are allowed only at night.",
 	invalid_request = "That action was not accepted. Use the on-screen controls.",
 	wrong_phase = "Production is closed. Wait for the next shift.",
 	waiting_for_crew = "You are waiting for the next crew shift.",
@@ -148,5 +152,28 @@ end
 function Hud.message(code)
 	assert(Hud.messages[code], "Hud: missing feedback for " .. tostring(code))
 	return Hud.messages[code]
+end
+function Hud.timeline(phase, bankSeconds, rushSeconds, remaining)
+	local function time(seconds)
+		assert(type(seconds) == "number" and seconds >= 0, "Hud: invalid timeline countdown")
+		return string.format("%02d:%02d", math.floor(seconds / 60), seconds % 60)
+	end
+	local bank
+	if phase == "day" then
+		bank = "Rich bank opens in " .. time(bankSeconds)
+	elseif phase == "night" then
+		bank = "Rich bank OPEN • closes in " .. time(bankSeconds)
+	elseif phase == "dawn" or phase == "rush" or phase == "ended" then
+		bank = "Rich bank CLOSED • saved rich dirt keeps its bonus"
+	else
+		error("Hud: unknown timeline phase " .. tostring(phase))
+	end
+	local rush = if phase == "rush" or phase == "ended"
+		then "Rush ends in " .. time(remaining)
+		else "Rush in " .. time(rushSeconds)
+	return bank
+		.. " • "
+		.. rush
+		.. "\nSell before the bell! Unsold finds and unfinished dirt are discarded without payment."
 end
 return Hud

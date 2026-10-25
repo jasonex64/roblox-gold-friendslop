@@ -4,6 +4,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Sift = require(Shared.Pure.Sift)
 local Batch = require(Shared.Pure.Batch)
 local SkillCheck = require(Shared.Pure.SkillCheck)
+local Timeline = require(Shared.Pure.Timeline)
 
 local Sifting = {}
 function Sifting.new(config, session, camp, digging, remote)
@@ -77,6 +78,15 @@ function Sifting.new(config, session, camp, digging, remote)
 		-- Server-owned upgrade/rate inputs, changed by later purchase wiring.
 		controller.upgrades = 0
 		controller.rate = 1
+		controller.sweepDuration = function(start, settings, rate)
+			assert(session.run.startedAt, "Sifting: missing shift start")
+			return Timeline.sweepSeconds(
+				start - session.run.startedAt,
+				settings.siftSweepSeconds,
+				settings.rushSiftSweepSeconds,
+				settings
+			) / rate
+		end
 		controllers[player] = controller
 		publish(player, "ready")
 	end
@@ -111,14 +121,14 @@ function Sifting.new(config, session, camp, digging, remote)
 				result = reason
 			elseif action == "start" then
 				result = controller.start(
-					workspace:GetServerTimeNow(),
+					session.now(),
 					HttpService:GenerateGUID(false),
 					controller.upgrades,
 					controller.rate
 				)
 			else
 				-- No client timestamp, grade, value, or batch identity is accepted.
-				result, find = controller.press(workspace:GetServerTimeNow(), args[1], args[2])
+				result, find = controller.press(session.now(), args[1], args[2])
 			end
 		end
 		if
@@ -139,7 +149,7 @@ function Sifting.new(config, session, camp, digging, remote)
 	function self.step()
 		for player, controller in controllers do
 			local index = if controller.pending then controller.pending.index else nil
-			local result, find = controller.step(workspace:GetServerTimeNow(), allowed(player))
+			local result, find = controller.step(session.now(), allowed(player))
 			if find then
 				session.record(player, "processed", 1, "sift:" .. find.id)
 			end

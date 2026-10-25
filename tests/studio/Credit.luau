@@ -1,6 +1,6 @@
 --!strict
 -- Run through Studio MCP in Server during Play. One real avatar, isolated controllers
--- and an injected shift clock; digging and sifting use the real handlers and timers.
+-- and an injected shift clock; digging and sifting go through the real handlers.
 local players = game.Players:GetPlayers()
 assert(#players > 0, "CREDIT fixture needs a player")
 local server, camp = game.ServerScriptService.Server, workspace.RiverCamp
@@ -45,11 +45,9 @@ local function dig()
 	stand(camp.Bank)
 	local started = digging.request(a, "start")
 	assert(started == "started", "CREDIT: dig did not start: " .. tostring(started))
-	local deadline = os.clock() + config.digSeconds + 3
-	repeat
-		task.wait(0.1)
-		digging.step()
-	until digging.get(a).pending == nil or os.clock() > deadline
+	-- Handlers run on the injected shift clock (T-030), so advance it past the dig.
+	now += config.digSeconds
+	digging.step()
 	assert(digging.get(a).pending == nil, "CREDIT: dig did not finish")
 end
 local function expect(got, want, label)
@@ -68,11 +66,11 @@ equip("Pan")
 stand(camp.River)
 local sifted = sifting.request(a, "start")
 assert(sifted == "started", "CREDIT: sift did not start: " .. tostring(sifted))
-local deadline = os.clock() + config.siftSeconds + 5
-repeat
-	task.wait(0.1)
+-- Unpressed checks expire one sweep at a time on the injected clock.
+for _ = 1, config.siftChecks + 1 do
+	now += config.siftSweepSeconds
 	sifting.step()
-until a:GetAttribute("CompletedFinds") == 1 or os.clock() > deadline
+end
 assert(credit().processed == 1, "CREDIT: sift not recorded")
 humanoid:UnequipTools()
 

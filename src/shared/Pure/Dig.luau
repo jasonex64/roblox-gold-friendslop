@@ -8,6 +8,10 @@ function Dig.new(config, Batch, draw)
 		pending = nil,
 		sifting = false,
 		digSeconds = config.digSeconds,
+		-- Server may inject a timeline scheduler; standalone digs use constant speed.
+		finishAt = function(start, seconds)
+			return start + seconds
+		end,
 	}
 	local limits = {
 		digPhases = { running = true },
@@ -29,9 +33,13 @@ function Dig.new(config, Batch, draw)
 		-- duration away; a consecutive dig may start immediately after completion.
 		local completion = table.clone(request)
 		assert(self.digSeconds > 0 and self.digSeconds < math.huge, "Dig: invalid dig duration")
-		completion.now += self.digSeconds
+		completion.now = self.finishAt(request.now, self.digSeconds)
+		assert(
+			completion.now > request.now and completion.now < math.huge,
+			"Dig: invalid scheduled completion"
+		)
 		local attemptLimits = table.clone(limits)
-		attemptLimits.digInterval = self.digSeconds
+		attemptLimits.digInterval = completion.now - request.now
 		local reason = Batch.canCreate(state, completion, attemptLimits)
 		if reason then
 			return reason

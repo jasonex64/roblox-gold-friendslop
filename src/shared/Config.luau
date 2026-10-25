@@ -1,6 +1,14 @@
 --!strict
 return table.freeze({
-	rulesVersion = "gate-b-crew-prototype",
+	rulesVersion = "gate-c-night-rush-prototype",
+	nightStart = 300, -- D-037
+	dawnStart = 480, -- D-037
+	rushStart = 540, -- D-037
+	rushSpeedup = 0.25, -- D-037
+	richMultiplier = 1.5, -- D-037
+	richBankDistance = 130, -- D-039
+	rushSiftSweepSeconds = 1.6, -- D-040
+	richSource = "RichBank",
 	crewCapacity = 4, -- D-032
 	binBatchesPerMember = 5, -- D-033
 	sluicePricePerMember = 200, -- D-035

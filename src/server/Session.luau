@@ -10,6 +10,7 @@ local Machine = require(Shared.Pure.Machine)
 local Sluice = require(Shared.Pure.Sluice)
 local Batch = require(Shared.Pure.Batch)
 local Contributions = require(Shared.Pure.Contributions)
+local Timeline = require(Shared.Pure.Timeline)
 
 local Session = {}
 
@@ -45,6 +46,17 @@ function Session.new(config, clock: () -> number, runId: string)
 			})
 		end
 		return rows
+	end
+	function session.timeline()
+		if not session.run.startedAt then
+			return "day", config.nightStart, config.rushStart
+		end
+		local elapsed = math.max(0, clock() - session.run.startedAt)
+		local phase = Timeline.phase(elapsed, config)
+		local nextBank = if phase == "day" then config.nightStart else config.dawnStart
+		return phase,
+			math.max(0, math.ceil(nextBank - elapsed)),
+			math.max(0, math.ceil(config.rushStart - elapsed))
 	end
 	function session.advance(ready: boolean)
 		Run.advance(session.run, clock(), ready)
