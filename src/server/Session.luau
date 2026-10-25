@@ -9,6 +9,7 @@ local Bin = require(Shared.Pure.Bin)
 local Machine = require(Shared.Pure.Machine)
 local Sluice = require(Shared.Pure.Sluice)
 local Batch = require(Shared.Pure.Batch)
+local Contributions = require(Shared.Pure.Contributions)
 local Timeline = require(Shared.Pure.Timeline)
 
 local Session = {}
@@ -19,6 +20,33 @@ function Session.new(config, clock: () -> number, runId: string)
 	local session = { run = Run.new(runId, clock(), config), crew = Crew.new(config) }
 	session.bin = Bin.new(config, session.crew)
 	session.machine = Machine.new(config, Sluice, Batch)
+	session.credit = Contributions.new()
+	-- Display names are kept so players who leave still appear on the results screen.
+	session.creditNames = {}
+	function session.record(player, kind: string, amount: number, eventId: string)
+		local id = tostring(player.UserId)
+		local credit, reason = Contributions.record(session.credit, id, kind, amount, eventId)
+		assert(reason == nil, "Session: duplicate credit event " .. eventId)
+		session.credit = credit
+		session.creditNames[id] = player.DisplayName
+	end
+	function session.creditRows()
+		local rows = {}
+		for _, row in Contributions.summary(session.credit) do
+			local name = session.creditNames[row.player]
+			assert(name, "Session: credit name missing for " .. row.player)
+			local totals = row.totals
+			table.insert(rows, {
+				name = name,
+				dug = totals.dug,
+				processed = totals.processed,
+				loaded = totals.loaded,
+				sold = totals.sold,
+				funded = totals.funded,
+			})
+		end
+		return rows
+	end
 	function session.timeline()
 		if not session.run.startedAt then
 			return "day", config.nightStart, config.rushStart
@@ -60,6 +88,8 @@ function Session.new(config, clock: () -> number, runId: string)
 		session.machine.clear()
 		session.bin.reset()
 		session.crew.reset()
+		session.credit = Contributions.new()
+		session.creditNames = {}
 		session.run = Run.reset(session.run)
 	end
 	function session.remaining()

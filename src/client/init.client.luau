@@ -144,6 +144,8 @@ Theme.gloss(resultTile, Theme.gold)
 local resultHaul = Theme.text(resultTile, "Haul", "Crew Haul", 37, true)
 resultHaul.Size = UDim2.new(1, -16, 1, -8)
 resultHaul.Position = UDim2.fromOffset(8, 4)
+local resultCredits = Theme.text(results, "Credits", "", 18, false)
+resultCredits.TextXAlignment = Enum.TextXAlignment.Left
 local resultCopy = Theme.text(
 	results,
 	"ResetRules",
@@ -199,11 +201,13 @@ local function layout()
 	place(helpTitle, 12, 6, mw - 24, 38)
 	place(helpCopy, 16, 48, mw - 32, mh - 114)
 	place(helpClose, 18, mh - 57, mw - 36, 44)
-	local rh = math.min(h - 22, 330)
+	local rh = math.min(h - 22, 430)
+	local ch = math.max(48, rh - 290)
 	place(results, (w - mw) / 2, (h - rh) / 2, mw, rh)
 	place(resultTitle, 10, 6, mw - 20, 38)
 	place(resultTile, 18, 50, mw - 36, 75)
-	place(resultCopy, 18, 136, mw - 36, rh - 203)
+	place(resultCredits, 18, 132, mw - 36, ch)
+	place(resultCopy, 18, 136 + ch, mw - 36, rh - 203 - ch)
 	place(replay, 18, rh - 56, mw - 36, 44)
 end
 root:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
@@ -358,10 +362,14 @@ local function refresh()
 	end
 	siftPanel.Visible = current ~= nil and phase == "running"
 	local result = status:GetAttribute("ResultHaul")
-	results.Visible = phase == "results" and result ~= nil
+	-- Both attributes are set together on the server but replicate one at a time.
+	local credits = status:GetAttribute("ResultCredits")
+	results.Visible = phase == "results" and result ~= nil and credits ~= nil
 	if results.Visible then
 		helpPanel.Visible = false
 		resultHaul.Text = string.format("Crew Haul\n$%d", result)
+		assert(type(credits) == "string", "HUD: ResultCredits must be JSON text")
+		resultCredits.Text = Hud.credits(game:GetService("HttpService"):JSONDecode(credits))
 		local votes = status:GetAttribute("ReplayVotes")
 		if votes ~= nil and crewCount ~= nil then
 			replay.Caption.Text = if not member

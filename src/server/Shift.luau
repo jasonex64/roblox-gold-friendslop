@@ -1,5 +1,6 @@
 --!strict
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 local Shift = {}
 function Shift.new(session, digging, sifting, economy, status, spawn)
 	local self = { result = nil }
@@ -53,6 +54,10 @@ function Shift.new(session, digging, sifting, economy, status, spawn)
 		status:SetAttribute("EndsAt", session.run.endsAt)
 		status:SetAttribute("AcceptingProduction", session.accepts())
 		status:SetAttribute("ResultHaul", if self.result then self.result.haul else nil)
+		status:SetAttribute(
+			"ResultCredits",
+			if self.result then HttpService:JSONEncode(session.creditRows()) else nil
+		)
 		status:SetAttribute("CrewHaul", session.crew.haul)
 		status:SetAttribute("CrewCount", #session.crew.members())
 		local votes = 0

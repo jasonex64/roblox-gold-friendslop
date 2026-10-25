@@ -101,10 +101,13 @@ function Digging.new(config, session, camp)
 		for player, controller in controllers do
 			local pad, phase = context(player)
 			local source = if pad then pad:GetAttribute("DigSource") else nil
+			-- The pending request ID becomes the created batch ID.
+			local batchId = if controller.pending then controller.pending.request.id else nil
 			local result =
 				controller.step(session.now(), if pad then 0 else math.huge, phase, source)
 			if result == "created" then
 				session.activity(player)
+				session.record(player, "dug", 1, "dig:" .. batchId)
 				local count = 0
 				for _, batch in controller.state.batches do
 					if batch.status == "queued" or batch.status == "processing" then
