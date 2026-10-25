@@ -117,4 +117,13 @@ return {
 	["RESULT-2 an empty shift says so instead of showing a blank list"] = function(t)
 		t.equal(Hud.credits({}), "No contributions this shift.")
 	end,
+	["SLUICE-UI-1 the sluice's main action is funding until it is built"] = function(t)
+		local s = state("Sluice")
+		s.sluiceBuilt = false
+		local action, hint = Hud.nextAction(s, Config)
+		t.equal(action, "fund_sluice")
+		t.equal(string.find(hint, "Run Cash", 1, true) ~= nil, true)
+		s.sluiceBuilt = true
+		t.equal(Hud.nextAction(s, Config), "open_sluice")
+	end,
 }

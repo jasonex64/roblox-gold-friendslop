@@ -234,6 +234,8 @@ local function activate()
 		local action = player:GetAttribute("HudAction")
 		if action == "open_bin" then
 			binPanel.open()
+		elseif action == "fund_sluice" then
+			sluicePanel.open()
 		elseif action == "open_sluice" then
 			machineRemote:FireServer(
 				"transfer",
@@ -259,6 +261,7 @@ buy.Activated:Connect(function()
 end)
 local actions = {
 	open_bin = "open crew bin",
+	fund_sluice = "fund sluice",
 	open_sluice = "quick transfer",
 	dig = "dig",
 	sift = "sift",
