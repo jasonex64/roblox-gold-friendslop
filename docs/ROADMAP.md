@@ -151,3 +151,28 @@ This is the first Gate D slice, not the complete milestone. Classes/nodes and
 pets/eggs follow as separate planned tracks, then discovery/record browsing and
 Gate D validation. Class rarity conflicts (D-006 versus DESIGN), remaining
 numeric approvals and validation scope must be settled in those later tickets.
+
+### Next parallel pair after PR #59 (T-041)
+
+| Owner | Ticket | Deliverable | Prerequisite | Exclusive source scope |
+|---|---|---|---|---|
+| yukicide | T-040 | Earned rewards survive replay/reload; results show saved/pending/failed truthfully | T-039 reviewed and done; normal claim | Session/Shift, server entrypoint, activity/reveal hooks and client results |
+| jason | T-042 | Pure class/pet rate modifier calculations | T-041 reviewed and merged; normal claim | New Pure/Modifiers and its test; dedicated modifier Config section and ValidateConfig/test |
+
+First, jason should review the merged PR #59 collision fix and record findings;
+its merge did not itself close T-039. Preserve independent review evidence and
+the different-human reviewer rule when closing the original storage ticket.
+T-040 remains waiting on T-039 until that closeout reaches main. This assignment
+does not claim or start either implementation in this planning turn.
+
+The two tracks do not import or wire each other's changes. T-040 uses existing
+RunRewards/Progression interfaces and must coordinate any needed Profile or
+storage-interface fixes before editing them. T-042 accepts numeric bonuses and
+eligibility supplied by a future server caller; it does not create classes or
+pets, change profile schemas, or touch Digging/Sifting/Machinery/client files.
+T-040 does not edit modifier Config/ValidateConfig. Any required shared-file
+change must be coordinated before work, not resolved by overwriting a teammate.
+
+After these tracks, plan class ownership/nodes and pet/egg progression with a
+shared profile-mutation contract. D-006's rarity question stays deferred to that
+planning; this pure rate module makes no acquisition or rarity decisions.
