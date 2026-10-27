@@ -4,7 +4,7 @@ local Profile = require("../../src/shared/Pure/Profile")
 local function manifest(overrides: { [string]: any }?): any
 	local m: { [string]: any } = {
 		runId = "run-1",
-		userId = "42",
+		userId = 42,
 		rulesVersion = "gate-c",
 		crewSize = 2,
 		crewHaul = 3000,
@@ -13,7 +13,12 @@ local function manifest(overrides: { [string]: any }?): any
 		claimTokens = 23,
 		completionDelta = 1,
 		discoveries = { ["Gold Flakes"] = true },
-		recordCandidate = { score = 3000, crewSize = 2, assisted = false, rulesVersion = "gate-c" },
+		recordCandidate = {
+			crewHaul = 3000,
+			crewSize = 2,
+			assisted = false,
+			rulesVersion = "gate-c",
+		},
 	}
 	for key, value in overrides or {} do
 		m[key] = value
@@ -27,32 +32,32 @@ end
 
 return {
 	["PROFILE new profiles start empty at the current version"] = function(t)
-		local data = Profile.new("42")
+		local data = Profile.new(42)
 		t.equal(data.version, Profile.VERSION)
 		t.equal(data.tokens, 0)
 		t.equal(data.completedRuns, 0)
 		t.equal(next(data.applied), nil)
 		t.equal(next(data.pending), nil)
 		t.errors(function()
-			Profile.new("")
+			Profile.new(0)
 		end)
 	end,
 	["PROFILE decode rejects wrong versions, owners and shapes without resetting"] = function(t)
-		local good = Profile.new("42")
-		local decoded, reason = Profile.decode("42", good)
+		local good = Profile.new(42)
+		local decoded, reason = Profile.decode(42, good)
 		t.equal(decoded, good)
 		t.equal(reason, nil)
 		local future = table.clone(good)
 		future.version = Profile.VERSION + 1
-		t.equal(select(2, Profile.decode("42", future)), "unsupported_version")
-		t.equal(select(2, Profile.decode("7", good)), "invalid_profile")
-		t.equal(select(2, Profile.decode("42", "corrupt")), "invalid_profile")
+		t.equal(select(2, Profile.decode(42, future)), "unsupported_version")
+		t.equal(select(2, Profile.decode(7, good)), "invalid_profile")
+		t.equal(select(2, Profile.decode(42, "corrupt")), "invalid_profile")
 		local negative = table.clone(good)
 		negative.tokens = -1
-		t.equal(select(2, Profile.decode("42", negative)), "invalid_profile")
+		t.equal(select(2, Profile.decode(42, negative)), "invalid_profile")
 		local badPending = table.clone(good)
 		badPending.pending = { ["run-1"] = manifest({ claimTokens = 1.5 }) }
-		t.equal(select(2, Profile.decode("42", badPending)), "invalid_profile")
+		t.equal(select(2, Profile.decode(42, badPending)), "invalid_profile")
 		t.equal(future.version, Profile.VERSION + 1)
 	end,
 	["PROFILE invalid manifests error by name"] = function(t)
@@ -81,7 +86,7 @@ return {
 	end,
 	["PROFILE store then apply grants once and keeps the marker"] = function(t)
 		local m = manifest()
-		local empty = Profile.new("42")
+		local empty = Profile.new(42)
 		local pending, stored = Profile.store(empty, m)
 		t.equal(stored, "pending")
 		t.equal(empty.pending["run-1"], nil)
@@ -106,7 +111,7 @@ return {
 		t.equal(select(2, Profile.apply(saved, "run-2")), "missing")
 	end,
 	["PROFILE conflicting duplicate payloads are detected before and after apply"] = function(t)
-		local pending = Profile.store(Profile.new("42"), manifest())
+		local pending = Profile.store(Profile.new(42), manifest())
 		t.equal(select(2, Profile.store(pending, manifest({ claimTokens = 24 }))), "conflict")
 		local saved = Profile.apply(pending, "run-1")
 		t.equal(select(2, Profile.store(saved, manifest({ crewHaul = 3001 }))), "conflict")
@@ -114,13 +119,13 @@ return {
 		local other = manifest({ discoveries = { ["Gold Flakes"] = true, ["Garnet"] = true } })
 		t.equal(Profile.fingerprint(reordered), Profile.fingerprint(other))
 		t.errors(function()
-			Profile.store(Profile.new("7"), manifest())
+			Profile.store(Profile.new(7), manifest())
 		end)
 	end,
 	["PROFILE ineligible runs commit discoveries only; records keep the best per bucket"] = function(
 		t
 	)
-		local data = Profile.new("42")
+		local data = Profile.new(42)
 		data = Profile.apply(
 			Profile.store(
 				data,
@@ -148,7 +153,7 @@ return {
 					crewHaul = 1000,
 					claimTokens = 21,
 					recordCandidate = {
-						score = 1000,
+						crewHaul = 1000,
 						crewSize = 2,
 						assisted = false,
 						rulesVersion = "gate-c",
@@ -164,7 +169,7 @@ return {
 					runId = "c",
 					assisted = true,
 					recordCandidate = {
-						score = 500,
+						crewHaul = 500,
 						crewSize = 2,
 						assisted = true,
 						rulesVersion = "gate-c",

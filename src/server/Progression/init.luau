@@ -33,15 +33,15 @@ local Progression = {}
 
 function Progression.new(store, Profile)
 	local self = {}
-	local function key(userId: string): string
-		return "profile:" .. userId
+	local function key(userId: number): string
+		return "profile:" .. tostring(userId)
 	end
 	local function failed(reason: string, message: string?): Outcome
 		return { status = "failed", reason = reason, message = message, profile = nil }
 	end
 	-- Runs step(profile) -> (newProfile, result) inside one store update. Returns the
 	-- result of the transform run that the store committed (or cancelled).
-	local function change(userId: string, create: boolean, step): (string, any)
+	local function change(userId: number, create: boolean, step): (string, any)
 		local result, profile = nil, nil
 		local ok, err = store.update(key(userId), function(raw)
 			local data, reason
@@ -74,7 +74,7 @@ function Progression.new(store, Profile)
 	end
 
 	-- Loads a profile; a default is created only after a successful read finds none.
-	function self.load(userId: string): Outcome
+	function self.load(userId: number): Outcome
 		local ok, raw = store.read(key(userId))
 		if not ok then
 			return failed("store_error", raw)
@@ -105,7 +105,7 @@ function Progression.new(store, Profile)
 		if result == "conflict" then
 			error(
 				string.format(
-					"Progression: conflicting manifest for run %s player %s",
+					"Progression: conflicting manifest for run %s player %d",
 					manifest.runId,
 					manifest.userId
 				)
@@ -118,7 +118,7 @@ function Progression.new(store, Profile)
 		return failed(result, if result == "store_error" then value else nil)
 	end
 
-	function self.pending(userId: string): Outcome
+	function self.pending(userId: number): Outcome
 		local loaded = self.load(userId)
 		if loaded.status ~= "loaded" then
 			return loaded
@@ -131,12 +131,12 @@ function Progression.new(store, Profile)
 	end
 
 	-- Applies a pending manifest. "saved" only after the write is acknowledged.
-	function self.apply(userId: string, runId: string): Outcome
+	function self.apply(userId: number, runId: string): Outcome
 		local result, value = change(userId, false, function(data)
 			return Profile.apply(data, runId)
 		end)
 		if result == "missing" then
-			error(string.format("Progression: run %s is not pending for player %s", runId, userId))
+			error(string.format("Progression: run %s is not pending for player %d", runId, userId))
 		elseif result == "saved" or result == "alreadyApplied" then
 			return { status = result, profile = value }
 		end

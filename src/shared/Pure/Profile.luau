@@ -8,15 +8,16 @@ local Profile = {}
 Profile.VERSION = 1
 
 export type RecordCandidate = {
-	score: number,
+	crewHaul: number,
 	crewSize: number,
 	assisted: boolean,
 	rulesVersion: string,
 }
--- One per participant per run; grant identity is (runId, userId).
+-- One per participant per run (RunRewards.build); grant identity is (runId, userId),
+-- where userId is the player's numeric UserId.
 export type Manifest = {
 	runId: string,
-	userId: string,
+	userId: number,
 	rulesVersion: string,
 	crewSize: number,
 	crewHaul: number,
@@ -29,11 +30,11 @@ export type Manifest = {
 }
 export type Data = {
 	version: number,
-	userId: string,
+	userId: number,
 	tokens: number,
 	completedRuns: number,
 	discoveries: { [string]: boolean },
-	-- Best crew score per crew-size/assistance/rules-version bucket.
+	-- Best crew haul per crew-size/assistance/rules-version bucket.
 	records: { [string]: number },
 	-- runId -> fingerprint of the applied manifest; never pruned (deduplication).
 	applied: { [string]: string },
@@ -46,6 +47,10 @@ end
 
 local function text(value: any): boolean
 	return type(value) == "string" and value ~= ""
+end
+
+local function player(value: any): boolean
+	return count(value) and value >= 1 and value <= 2 ^ 53 - 1
 end
 
 local function set(value: any): boolean
@@ -64,8 +69,10 @@ end
 local function manifestProblem(m: any): string?
 	if type(m) ~= "table" then
 		return "manifest must be a table"
-	elseif not text(m.runId) or not text(m.userId) or not text(m.rulesVersion) then
-		return "runId, userId and rulesVersion must be nonempty strings"
+	elseif not text(m.runId) or not text(m.rulesVersion) then
+		return "runId and rulesVersion must be nonempty strings"
+	elseif not player(m.userId) then
+		return "userId must be a positive integer UserId"
 	elseif not count(m.crewSize) or m.crewSize < 1 then
 		return "crewSize must be a positive integer"
 	elseif not count(m.crewHaul) or not count(m.claimTokens) then
@@ -86,12 +93,12 @@ local function manifestProblem(m: any): string?
 	if record ~= nil then
 		if
 			type(record) ~= "table"
-			or not count(record.score)
+			or not count(record.crewHaul)
 			or not count(record.crewSize)
 			or type(record.assisted) ~= "boolean"
 			or not text(record.rulesVersion)
 		then
-			return "recordCandidate must have score, crewSize, assisted and rulesVersion"
+			return "recordCandidate must have crewHaul, crewSize, assisted and rulesVersion"
 		elseif m.completionDelta ~= 1 then
 			return "a record needs an eligible completion"
 		end
@@ -106,8 +113,8 @@ function Profile.checkManifest(m: Manifest)
 	end
 end
 
-function Profile.new(userId: string): Data
-	assert(text(userId), "Profile.new: userId must be a nonempty string")
+function Profile.new(userId: number): Data
+	assert(player(userId), "Profile.new: userId must be a positive integer UserId")
 	return {
 		version = Profile.VERSION,
 		userId = userId,
@@ -121,7 +128,7 @@ function Profile.new(userId: string): Data
 end
 
 -- Validates a stored value. Failures are explicit; nothing is reset to a default.
-function Profile.decode(userId: string, raw: any): (Data?, string?)
+function Profile.decode(userId: number, raw: any): (Data?, string?)
 	if type(raw) ~= "table" then
 		return nil, "invalid_profile"
 	elseif raw.version ~= Profile.VERSION then
@@ -169,7 +176,7 @@ local function canonical(m: Manifest): string
 	local record = m.recordCandidate
 	return table.concat({
 		m.runId,
-		m.userId,
+		tostring(m.userId),
 		m.rulesVersion,
 		tostring(m.crewSize),
 		tostring(m.crewHaul),
@@ -180,7 +187,7 @@ local function canonical(m: Manifest): string
 		table.concat(sorted(m.discoveries), ","),
 		if record
 			then table.concat({
-				tostring(record.score),
+				tostring(record.crewHaul),
 				tostring(record.crewSize),
 				tostring(record.assisted),
 				record.rulesVersion,
@@ -259,8 +266,8 @@ function Profile.apply(data: Data, runId: string): (Data, string)
 	if record then
 		local bucket = Profile.recordBucket(record)
 		local best = result.records[bucket]
-		if best == nil or record.score > best then
-			result.records[bucket] = record.score
+		if best == nil or record.crewHaul > best then
+			result.records[bucket] = record.crewHaul
 		end
 	end
 	result.applied[runId] = Profile.fingerprint(m)
