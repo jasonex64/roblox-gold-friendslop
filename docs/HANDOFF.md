@@ -1,5 +1,7 @@
 # Project handoff
 
+> **Historical snapshot, not the current state.** Everything below describes Gate A as of October 22, 2026. As of October 26: all M1 (Gate A) and M2 (Gate B) tickets are done, T-011 is validated (D-029), Gate B was accepted (EXP-001), strict numbers report 0 provisional values, and Gate C (M3) is in progress. Behavior added or changed since this snapshot (crew shifts and shares, shared bin, crew sluice and its tier two and hopper, night bank, final rush with 1.6-second rush sweeps, tool tiers, deferred find sound) is recorded in [DECISIONS.md](DECISIONS.md) D-031 onward and the ticket Logs. For current status use `python tools/board.py`.
+
 T-004 update: D-023 removes automatic end-of-shift sales; D-024 approves all 34 remaining tuning values; D-025 approves the current solo/reset rules. T-004 is ready for independent review. The earlier session summary below is historical; its outstanding T-004 approvals and provisional-value count are superseded. T-011 integrated validation remains outstanding.
 
 Updated October 22, 2026, America/Los_Angeles. This covers the development session spanning the evening of October 21 into October 22 and the earlier repository history.
