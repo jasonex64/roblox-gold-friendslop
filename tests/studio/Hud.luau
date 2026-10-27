@@ -11,7 +11,10 @@ assert(
 	root.Top.Waiting.Value.Text
 		== string.format("%02d:%02d", math.floor(seconds / 60), seconds % 60)
 )
-assert(root.Top.Waiting.Title.Text == status:GetAttribute("Phase"):gsub("^%l", string.upper))
+-- T-030: while running, the timer title shows the shift phase (Day/Night/Dawn/Rush).
+local phase = status:GetAttribute("Phase")
+local title = if phase == "running" then status:GetAttribute("ShiftPhase") else phase
+assert(root.Top.Waiting.Title.Text == title:gsub("^%l", string.upper))
 assert(
 	root.Top.Bucket.Value.Text
 		== string.format(
