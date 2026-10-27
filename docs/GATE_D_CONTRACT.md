@@ -94,7 +94,9 @@ other's ticket, Config section, source or tests.
 
 T-040 (yukicide, reviewed by jason) owns Session/Shift/server entrypoint wiring,
 activity/reveal collection, results UI and persistent status messages after
-both foundations merge and a human explicitly resolves Gate C disposition.
+both foundations complete review and merge. D-047 resolves the Gate C
+disposition by owner waiver, not a passed test. T-040 remains unclaimed; the
+owner explicitly said not to start it under this request.
 It must not display a reward as saved while storage is pending or failed.
 Synthetic/fake-store tests are technical evidence, never human playtest evidence.
 

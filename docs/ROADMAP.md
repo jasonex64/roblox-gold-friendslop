@@ -138,13 +138,14 @@ is [GATE_D_CONTRACT.md](GATE_D_CONTRACT.md); no gameplay tuning is newly approve
 | T-037 | yukicide / jason | Parallel plan and contract | T-031, T-032, T-033 | Docs/tickets only |
 | T-038 | yukicide / jason | Pure reward manifests | T-037 | New RunRewards, reward Config section, ValidateConfig |
 | T-039 | jason / yukicide | Profile and durable reward storage | T-037 | New Profile, ProgressionTypes and server/Progression |
-| T-040 | yukicide / jason | Shift integration and saved/pending results | T-034, T-038, T-039 | Session/Shift, server entrypoint, activity/reveal hooks, client results |
+| T-040 | yukicide / jason | Shift integration and saved/pending results | T-038, T-039 | Session/Shift, server entrypoint, activity/reveal hooks, client results |
 
 After T-037 is reviewed and merged, T-038 and T-039 can be claimed concurrently.
 Neither edits live gameplay wiring or the other's files. Cross-review the two
-foundation PRs, then integrate through T-040. T-034's skipped validation needs
-an explicit human disposition before live integration; preparation does not
-silently waive that dependency.
+foundation PRs, then integrate through T-040. D-047 records the owner's decision
+to proceed with Gate C playtests skipped and waives T-034 as a dependency.
+Skipped tests remain unvalidated. T-040 is unclaimed and must not start under
+the current request.
 
 This is the first Gate D slice, not the complete milestone. Classes/nodes and
 pets/eggs follow as separate planned tracks, then discovery/record browsing and
