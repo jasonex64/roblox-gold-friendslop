@@ -82,6 +82,54 @@ local function manifest(runId: string, overrides: { [string]: any }?): any
 end
 
 return {
+
+	["PROGRESSION exact manifest conflicts survive JSON restart and apply"] = function(t)
+		local function reward(haul)
+			return RunRewards.build({
+				runId = "run-review",
+				rulesVersion = "gate-c",
+				crewSize = 1,
+				crewHaul = haul,
+				assisted = false,
+				participants = {
+					[42] = { activeSeconds = 480, discoveries = { ["Gold Flakes"] = true } },
+				},
+			}, Config)[42]
+		end
+		local store = fakeStore()
+		local service = Progression.new(store, Profile)
+		t.equal(service.store(reward(17950)).status, "pending")
+		service = Progression.new(store, Profile)
+		t.errors(function()
+			service.store(reward(61116))
+		end)
+		t.equal(service.store(reward(17950)).status, "pending")
+		t.equal(service.apply(42, "run-review").status, "saved")
+		service = Progression.new(store, Profile)
+		t.errors(function()
+			service.store(reward(61116))
+		end)
+		t.equal(service.store(reward(17950)).status, "alreadyApplied")
+		t.equal(service.apply(42, "run-review").status, "alreadyApplied")
+		local saved = service.load(42).profile
+		t.equal(saved.tokens, 40)
+		t.equal(saved.completedRuns, 1)
+		t.equal(saved.records["1|unassisted|gate-c"], 17950)
+	end,
+	["PROGRESSION legacy profiles are preserved on load store and apply"] = function(t)
+		local store = fakeStore()
+		local old = Profile.new(42)
+		old.version, old.tokens = 1, 123
+		old.applied["run-1"] = "6c42859e"
+		store.put("profile:42", old)
+		local service = Progression.new(store, Profile)
+		t.equal(service.load(42).reason, "unsupported_version")
+		t.equal(service.store(manifest("run-1")).reason, "unsupported_version")
+		t.equal(service.apply(42, "run-1").reason, "unsupported_version")
+		t.equal(store.writes, 0)
+		t.equal(store.raw("profile:42").tokens, 123)
+		t.equal(store.raw("profile:42").applied["run-1"], "6c42859e")
+	end,
 	["PROGRESSION failed loads never become a default profile"] = function(t)
 		local store = fakeStore()
 		local service = Progression.new(store, Profile)

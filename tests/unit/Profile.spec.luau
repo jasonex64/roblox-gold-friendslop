@@ -31,6 +31,64 @@ local function manifest(overrides: { [string]: any }?): any
 end
 
 return {
+
+	["PROFILE exact payload rejects the former FNV collision before and after apply"] = function(t)
+		local function reward(haul)
+			return manifest({
+				runId = "run-review",
+				crewSize = 1,
+				crewHaul = haul,
+				claimTokens = 40,
+				recordCandidate = {
+					crewHaul = haul,
+					crewSize = 1,
+					assisted = false,
+					rulesVersion = "gate-c",
+				},
+			})
+		end
+		local a, b = reward(17950), reward(61116)
+		t.equal(Profile.fingerprint(a) == Profile.fingerprint(b), false)
+		local pending = Profile.store(Profile.new(42), a)
+		t.equal(select(2, Profile.store(pending, b)), "conflict")
+		t.equal(select(2, Profile.store(pending, reward(17950))), "alreadyPending")
+		local saved = Profile.apply(pending, a.runId)
+		t.equal(select(2, Profile.store(saved, b)), "conflict")
+		t.equal(select(2, Profile.store(saved, reward(17950))), "alreadyApplied")
+		t.equal(saved.records["1|unassisted|gate-c"], 17950)
+	end,
+	["PROFILE encoding separates delimiters and preserves numeric precision"] = function(t)
+		local a = manifest({ discoveries = { ["a,b"] = true } })
+		local b = manifest({ discoveries = { a = true, b = true } })
+		t.equal(Profile.fingerprint(a) == Profile.fingerprint(b), false)
+		local c = manifest({ discoveries = { ["a|b:12"] = true, ["雪"] = true } })
+		local d = manifest({ discoveries = { ["雪"] = true, ["a|b:12"] = true } })
+		t.equal(Profile.fingerprint(c), Profile.fingerprint(d))
+		a = manifest({ crewHaul = 9007199254740990 })
+		b = manifest({ crewHaul = 9007199254740991 })
+		t.equal(Profile.fingerprint(a) == Profile.fingerprint(b), false)
+	end,
+	["PROFILE stored manifest is detached from caller mutation"] = function(t)
+		local m = manifest()
+		local pending = Profile.store(Profile.new(42), m)
+		m.claimTokens = 99
+		m.discoveries.Injected = true
+		m.recordCandidate.crewHaul = 9999
+		local saved = Profile.apply(pending, m.runId)
+		t.equal(saved.tokens, 23)
+		t.equal(saved.discoveries.Injected, nil)
+		t.equal(saved.records["2|unassisted|gate-c"], 3000)
+	end,
+	["PROFILE legacy hash profiles fail closed without resetting progress"] = function(t)
+		local old = Profile.new(42)
+		old.version, old.tokens = 1, 123
+		old.applied["old-run"] = "6c42859e"
+		t.equal(select(2, Profile.decode(42, old)), "unsupported_version")
+		t.equal(old.tokens, 123)
+		t.equal(old.applied["old-run"], "6c42859e")
+		old.version = Profile.VERSION
+		t.equal(select(2, Profile.decode(42, old)), "invalid_profile")
+	end,
 	["PROFILE new profiles start empty at the current version"] = function(t)
 		local data = Profile.new(42)
 		t.equal(data.version, Profile.VERSION)
