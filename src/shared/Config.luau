@@ -18,6 +18,7 @@ return table.freeze({
 	sluiceDirtCapacity = 20, -- D-036
 	sluiceTierTwoPricePerMember = 250, -- D-043
 	sluiceTierTwoSeconds = 2.5, -- D-043
+	sluiceHopperPricePerMember = 150, -- D-044
 	afkSeconds = 60, -- D-032
 	afkWarningSeconds = 10, -- D-032
 	readySeconds = 3, -- D-024

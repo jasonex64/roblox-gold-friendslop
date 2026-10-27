@@ -9,6 +9,7 @@ local function config()
 		outputCapacity = 3,
 		tierTwoPrice = 500,
 		tierTwoSeconds = 2.5,
+		hopperPrice = 300,
 	}
 end
 
@@ -148,6 +149,7 @@ return {
 				outputCapacity = 1,
 				tierTwoPrice = 1,
 				tierTwoSeconds = 2,
+				hopperPrice = 1,
 			})
 		end, "price must be positive")
 	end,
@@ -208,5 +210,33 @@ return {
 				return now
 			end)
 		end, "invalid lane finish time")
+	end,
+	["SLUICE-9 the hopper is funded after the build, in either order with tier two"] = function(t)
+		local cfg = config()
+		local _, early, notBuilt = Sluice.hopper(Sluice.new(cfg), cfg, 500, 100, "a:1")
+		t.equal(notBuilt, "not_built")
+		t.equal(early, 0)
+		-- Hopper first, then tier two.
+		local a, chargedA = Sluice.hopper(built(), cfg, 500, 200, "a:1")
+		t.equal(chargedA, 200)
+		t.equal(a.hopper, false)
+		local b, chargedB, reasonB = Sluice.hopper(a, cfg, 500, 500, "b:1")
+		t.equal(reasonB, nil)
+		t.equal(chargedB, 100)
+		t.equal(b.hopper, true)
+		t.equal(b.hopperFunded, 300)
+		t.equal(b.tierTwo, false)
+		local _, _, already = Sluice.hopper(b, cfg, 500, 1, "c:1")
+		t.equal(already, "hopper_already_built")
+		local both = Sluice.upgrade(b, cfg, 500, 500, "d:1")
+		t.equal(both.tierTwo and both.hopper, true)
+		-- Tier two first, then the hopper; request IDs stay shared.
+		local tier = Sluice.upgrade(built(), cfg, 500, 500, "e:1")
+		local _, _, duplicate = Sluice.hopper(tier, cfg, 500, 300, "e:1")
+		t.equal(duplicate, "duplicate_request")
+		local _, _, poor = Sluice.hopper(tier, cfg, 299, 300, "f:1")
+		t.equal(poor, "insufficient_funds")
+		local last = Sluice.hopper(tier, cfg, 300, 300, "f:1")
+		t.equal(last.tierTwo and last.hopper, true)
 	end,
 }

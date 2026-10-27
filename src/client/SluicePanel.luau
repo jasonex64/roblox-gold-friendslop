@@ -24,13 +24,17 @@ function SluicePanel.new(root, Theme, config, send)
 	Theme.border(amount, 2)
 	local contribute = Theme.button(panel, "Contribute", "Contribute", Theme.gold)
 	local all = Theme.button(panel, "ContributeAll", "All I can", Theme.green)
+	-- After the build, each add-on has its own fund button (D-043, D-044).
+	local fundTier = Theme.button(panel, "FundTierTwo", "Fund tier two", Theme.gold)
+	local fundHopper = Theme.button(panel, "FundHopper", "Fund hopper", Theme.cyan)
 	local upgrades = Theme.text(panel, "Upgrades", "", 18, true)
-	upgrades.Visible = false
+	local hopperLine = Theme.text(panel, "Hopper", "", 18, true)
+	upgrades.Visible, hopperLine.Visible = false, false
+	fundTier.Visible, fundHopper.Visible = false, false
 
 	local note = Theme.text(panel, "Note", "", 15, false)
-	-- Funding goes to the build until the sluice exists, then to tier two (D-043).
-	local cash, remaining, target = 0, 0, "contribute"
-	local size = nil
+	local cash, remaining = 0, { contribute = 0, upgrade = 0, hopper = 0 }
+	local size, mode = nil, nil
 	local function arrange()
 		if not size then
 			return
@@ -45,32 +49,53 @@ function SluicePanel.new(root, Theme, config, send)
 		local y = 138
 		if upgrades.Visible then
 			upgrades.Position, upgrades.Size = UDim2.fromOffset(14, y), UDim2.new(1, -28, 0, 28)
-			y += 34
+			hopperLine.Position, hopperLine.Size =
+				UDim2.fromOffset(14, y + 34), UDim2.new(1, -28, 0, 28)
+			y += 68
 		end
 		if amount.Visible then
 			amount.Position, amount.Size = UDim2.fromOffset(16, y), UDim2.new(1, -32, 0, 34)
-			contribute.Position, contribute.Size =
-				UDim2.fromOffset(14, y + 42), UDim2.new(0.5, -20, 0, 44)
-			all.Position, all.Size = UDim2.new(0.5, 6, 0, y + 42), UDim2.new(0.5, -20, 0, 44)
+			for _, button in { contribute, fundTier } do
+				button.Position, button.Size =
+					UDim2.fromOffset(14, y + 42), UDim2.new(0.5, -20, 0, 44)
+			end
+			for _, button in { all, fundHopper } do
+				button.Position, button.Size =
+					UDim2.new(0.5, 6, 0, y + 42), UDim2.new(0.5, -20, 0, 44)
+			end
 			y += 94
 		end
 		note.Position, note.Size = UDim2.fromOffset(14, y), UDim2.new(1, -28, 1, -(y + 8))
 	end
-	contribute.Activated:Connect(function()
-		local value = tonumber(amount.Text)
-		if value and value > 0 and value % 1 == 0 and value < math.huge then
-			send(target, value)
-		else
-			note.Text = "Enter a positive whole-dollar amount."
+	-- Sends the typed whole-dollar amount, or everything the player can put toward action.
+	local function give(action, typed)
+		if typed then
+			local value = tonumber(amount.Text)
+			if value and value > 0 and value % 1 == 0 and value < math.huge then
+				send(action, value)
+			else
+				note.Text = "Enter a positive whole-dollar amount."
+			end
+			return
 		end
-	end)
-	all.Activated:Connect(function()
-		local value = math.min(cash, remaining)
+		local value = math.min(cash, remaining[action])
 		if value > 0 then
-			send(target, value)
+			send(action, value)
 		else
 			note.Text = "Sell finds to earn Run Cash first."
 		end
+	end
+	contribute.Activated:Connect(function()
+		give("contribute", true)
+	end)
+	all.Activated:Connect(function()
+		give("contribute", false)
+	end)
+	fundTier.Activated:Connect(function()
+		give("upgrade", amount.Text ~= "")
+	end)
+	fundHopper.Activated:Connect(function()
+		give("hopper", amount.Text ~= "")
 	end)
 	local self = {}
 	function self.open()
@@ -89,11 +114,25 @@ function SluicePanel.new(root, Theme, config, send)
 		local tierTwo = status:GetAttribute("SluiceTierTwo")
 		local tierFunded, tierPrice =
 			status:GetAttribute("SluiceTierTwoFunded"), status:GetAttribute("SluiceTierTwoPrice")
-		if tierTwo == nil or tierFunded == nil or tierPrice == nil then
+		local hopper = status:GetAttribute("SluiceHopper")
+		local hopperFunded, hopperPrice =
+			status:GetAttribute("SluiceHopperFunded"), status:GetAttribute("SluiceHopperPrice")
+		if
+			tierTwo == nil
+			or tierFunded == nil
+			or tierPrice == nil
+			or hopper == nil
+			or hopperFunded == nil
+			or hopperPrice == nil
+		then
 			return
 		end
-		target = if built then "upgrade" else "contribute"
-		cash, remaining = wallet, if built then tierPrice - tierFunded else price - funded
+		cash = wallet
+		remaining = {
+			contribute = price - funded,
+			upgrade = tierPrice - tierFunded,
+			hopper = hopperPrice - hopperFunded,
+		}
 		local seconds = if tierTwo then config.sluiceTierTwoSeconds else config.sluiceProcessSeconds
 		local lanes, busy = status:GetAttribute("SluiceLanes"), status:GetAttribute("SluiceBusy")
 		local output, capacity =
@@ -124,10 +163,14 @@ function SluicePanel.new(root, Theme, config, send)
 		if contributors ~= nil then
 			names.Text = if contributors == "" then "No contributions yet" else contributors
 		end
-		local funding = not built or not tierTwo
-		local changed = amount.Visible ~= funding or upgrades.Visible ~= built
-		amount.Visible, contribute.Visible, all.Visible = funding, funding, funding
-		upgrades.Visible = built
+		local addons = built and not (tierTwo and hopper)
+		contribute.Visible, all.Visible = not built, not built
+		amount.Visible = not built or addons
+		amount.PlaceholderText = if built
+			then "Whole dollars, or leave blank for all you can"
+			else "Enter whole dollars"
+		fundTier.Visible, fundHopper.Visible = built and not tierTwo, built and not hopper
+		upgrades.Visible, hopperLine.Visible = built, built
 		upgrades.Text = if tierTwo
 			then string.format("Tier two built • %gs per dirt", config.sluiceTierTwoSeconds)
 			else string.format(
@@ -136,13 +179,22 @@ function SluicePanel.new(root, Theme, config, send)
 				tierPrice,
 				config.sluiceTierTwoSeconds
 			)
+		hopperLine.Text = if hopper
+			then "Hopper built • feeds crew bin dirt into free lanes"
+			else string.format(
+				"Hopper: $%d / $%d • feeds crew bin dirt",
+				hopperFunded,
+				hopperPrice
+			)
 		note.Text = if not built
 			then "Voluntary contributions use your cash. No refunds. Funding resets at the bell."
 			elseif
-				not tierTwo
-			then "Tier two speeds up dirt loaded after it is built. Voluntary, no refunds, resets at the bell. Quick Transfer nearby moves Bucket dirt in and Backpack finds out."
+				addons
+			then "Add-ons are voluntary, no refunds, and reset at the bell. Tier two speeds up dirt loaded after it; the hopper feeds crew bin dirt automatically."
 			else "Use Quick Transfer nearby: Bucket dirt in, Backpack finds out. Lanes run 25% faster in the final rush. Unsold items disappear at the bell."
-		if changed then
+		local nextMode = if not built then "build" elseif addons then "addons" else "done"
+		if nextMode ~= mode then
+			mode = nextMode
 			arrange()
 		end
 	end

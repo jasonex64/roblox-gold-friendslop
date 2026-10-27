@@ -19,7 +19,7 @@ function Session.new(config, clock: () -> number, runId: string)
 	validate(config)
 	local session = { run = Run.new(runId, clock(), config), crew = Crew.new(config) }
 	session.bin = Bin.new(config, session.crew)
-	session.machine = Machine.new(config, Sluice, Batch)
+	session.machine = Machine.new(config, Sluice, Batch, session.bin)
 	-- Lanes speed up only for the part of their work after the final rush starts.
 	function session.machine.finishAt(start, seconds)
 		assert(session.run.startedAt, "Session: missing shift start")
