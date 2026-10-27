@@ -11,6 +11,10 @@ end
 function Machine.new(config, Sluice, Batch)
 	local self =
 		{ state = nil, settings = nil, batches = {}, outputs = {}, contributors = {}, queue = {} }
+	-- Server may inject the shift timeline (final rush); standalone lanes use constant speed.
+	function self.finishAt(start, seconds)
+		return start + seconds
+	end
 	function self.dirtCount()
 		local n = #self.queue
 		if self.state then
@@ -25,6 +29,8 @@ function Machine.new(config, Sluice, Batch)
 			lanes = config.sluiceLanesPerMember * members,
 			processSeconds = config.sluiceProcessSeconds,
 			outputCapacity = config.sluiceOutputPerMember * members,
+			tierTwoPrice = config.sluiceTierTwoPricePerMember * members,
+			tierTwoSeconds = config.sluiceTierTwoSeconds,
 		}
 		self.state = Sluice.new(self.settings)
 	end
@@ -32,12 +38,13 @@ function Machine.new(config, Sluice, Batch)
 		self.state, self.settings = nil, nil
 		self.batches, self.outputs, self.contributors, self.queue = {}, {}, {}, {}
 	end
-	function self.contribute(id, name, economy, amount, requestId)
+	-- Build and tier-two funding share the D-035 rules and the contributor totals.
+	local function fund(sluiceFund, id, name, economy, amount, requestId)
 		assert(self.state and self.settings, "Machine: not started")
 		if economy.ledger.requests[requestId] then
 			return "duplicate_request", 0
 		end
-		local state, charged, reason = Sluice.contribute(
+		local state, charged, reason = sluiceFund(
 			self.state,
 			self.settings,
 			economy.ledger.wallet,
@@ -55,7 +62,21 @@ function Machine.new(config, Sluice, Batch)
 		local contribution =
 			{ name = name, amount = charged + (if previous then previous.amount else 0) }
 		self.state, economy.ledger, self.contributors[id] = state, ledger, contribution
-		return if state.built then "sluice_built" else "contributed", charged
+		return nil, charged
+	end
+	function self.contribute(id, name, economy, amount, requestId)
+		local reason, charged = fund(Sluice.contribute, id, name, economy, amount, requestId)
+		if reason then
+			return reason, 0
+		end
+		return if self.state.built then "sluice_built" else "contributed", charged
+	end
+	function self.upgrade(id, name, economy, amount, requestId)
+		local reason, charged = fund(Sluice.upgrade, id, name, economy, amount, requestId)
+		if reason then
+			return reason, 0
+		end
+		return if self.state.tierTwo then "tier_two_built" else "upgrade_contributed", charged
 	end
 	function self.transfer(id, dig, sift, requestId)
 		assert(self.state and self.settings, "Machine: not started")
@@ -154,7 +175,7 @@ function Machine.new(config, Sluice, Batch)
 		end
 		while #queue > 0 do
 			local id = queue[1]
-			local loaded, reason = Sluice.load(state, self.settings, id, now)
+			local loaded, reason = Sluice.load(state, self.settings, id, now, self.finishAt)
 			if reason then
 				assert(
 					reason == "lanes_full" or reason == "output_full",

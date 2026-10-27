@@ -30,7 +30,8 @@ function Hud.nextAction(s, config)
 			return "fund_sluice",
 				"Chip in Run Cash to build the crew sluice. It builds once fully paid."
 		end
-		return "open_sluice", "Quick transfer bucket dirt and collect finds, or open sluice stats."
+		return "open_sluice",
+			"Quick transfer bucket dirt and collect finds, or open sluice stats for upgrades."
 	elseif s.station == "Bank" then
 		if s.carried >= config.bucketBatches then
 			return "none", "Bucket full! Walk to the blue River and sift."
@@ -72,6 +73,9 @@ Hud.messages = table.freeze({
 	stand_at_sluice = "Move near the Sluice to contribute or transfer items.",
 	contributed = "Contribution added to the crew sluice!",
 	sluice_built = "Crew sluice built! Load dirt to get it running.",
+	upgrade_contributed = "Contribution added to sluice tier two!",
+	tier_two_built = "Sluice tier two built! Dirt loaded from now on runs faster.",
+	already_upgraded = "Sluice tier two is already built.",
 	sluice_transferred = "Sluice transfer complete!",
 	sluice_no_transfer = "Nothing moved. Check Bucket dirt, Backpack space and sluice storage.",
 	sluice_loaded = "Dirt loaded! Collect finished sluice finds into your Backpack.",

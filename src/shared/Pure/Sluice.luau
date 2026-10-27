@@ -8,6 +8,8 @@ export type Lane = { batch: string, readyAt: number }
 export type State = {
 	funded: number,
 	built: boolean,
+	tierTwoFunded: number,
+	tierTwo: boolean,
 	lanes: { [number]: Lane },
 	output: { [string]: boolean },
 	processed: { [string]: boolean },
@@ -18,6 +20,8 @@ export type Config = {
 	lanes: number,
 	processSeconds: number,
 	outputCapacity: number,
+	tierTwoPrice: number,
+	tierTwoSeconds: number,
 }
 
 -- IEEE-754 exact-integer bound, not a gameplay limit or tuning value.
@@ -54,7 +58,31 @@ function Sluice.new(config: Config): State
 		config.outputCapacity >= 1 and config.outputCapacity % 1 == 0,
 		"Sluice: outputCapacity must be a positive integer"
 	)
-	return { funded = 0, built = false, lanes = {}, output = {}, processed = {}, requests = {} }
+	money(config.tierTwoPrice, "tierTwoPrice")
+	assert(config.tierTwoPrice > 0, "Sluice: tierTwoPrice must be positive")
+	assert(
+		config.tierTwoSeconds > 0 and config.tierTwoSeconds < config.processSeconds,
+		"Sluice: tierTwoSeconds must be positive and faster than processSeconds"
+	)
+	return {
+		funded = 0,
+		built = false,
+		tierTwoFunded = 0,
+		tierTwo = false,
+		lanes = {},
+		output = {},
+		processed = {},
+		requests = {},
+	}
+end
+
+-- Shared D-035 funding request checks for the build and tier two.
+local function duplicate(state: State, wallet: number, amount: number, requestId: string): boolean
+	assert(requestId ~= "", "Sluice: requestId must not be empty")
+	money(wallet, "wallet")
+	money(amount, "amount")
+	assert(amount > 0, "Sluice: amount must be positive")
+	return state.requests[requestId] == true
 end
 
 -- Request IDs share one namespace for the whole crew, so the server must make them
@@ -67,11 +95,7 @@ function Sluice.contribute(
 	amount: number,
 	requestId: string
 ): (State, number, string?)
-	assert(requestId ~= "", "Sluice: requestId must not be empty")
-	money(wallet, "wallet")
-	money(amount, "amount")
-	assert(amount > 0, "Sluice: amount must be positive")
-	if state.requests[requestId] then
+	if duplicate(state, wallet, amount, requestId) then
 		return state, 0, "duplicate_request"
 	end
 	if state.built then
@@ -90,9 +114,50 @@ function Sluice.contribute(
 	return result, charged, nil
 end
 
+-- D-043: tier two is funded like the build, only once the sluice is built. It changes
+-- the speed of lanes loaded afterwards; lanes already running keep their finish time.
+function Sluice.upgrade(
+	state: State,
+	config: Config,
+	wallet: number,
+	amount: number,
+	requestId: string
+): (State, number, string?)
+	if duplicate(state, wallet, amount, requestId) then
+		return state, 0, "duplicate_request"
+	end
+	if not state.built then
+		return state, 0, "not_built"
+	end
+	if state.tierTwo then
+		return state, 0, "already_upgraded"
+	end
+	local charged = math.min(amount, config.tierTwoPrice - state.tierTwoFunded)
+	if wallet < charged then
+		return state, 0, "insufficient_funds"
+	end
+	local result = table.clone(state)
+	result.tierTwoFunded += charged
+	result.tierTwo = result.tierTwoFunded == config.tierTwoPrice
+	result.requests = table.clone(state.requests)
+	result.requests[requestId] = true
+	return result, charged, nil
+end
+
+function Sluice.processSeconds(state: State, config: Config): number
+	return if state.tierTwo then config.tierTwoSeconds else config.processSeconds
+end
+
 -- Loading reserves an output slot, so a finished lane can never overflow output:
--- the sluice pauses at the load step instead of mid-processing.
-function Sluice.load(state: State, config: Config, batchId: string, now: number): (State, string?)
+-- the sluice pauses at the load step instead of mid-processing. finishAt schedules the
+-- lane from its load time and process seconds (the server applies the final rush).
+function Sluice.load(
+	state: State,
+	config: Config,
+	batchId: string,
+	now: number,
+	finishAt: (number, number) -> number
+): (State, string?)
 	assert(batchId ~= "", "Sluice: batchId must not be empty")
 	finite(now)
 	if not state.built then
@@ -114,9 +179,11 @@ function Sluice.load(state: State, config: Config, batchId: string, now: number)
 	if count(state.lanes) + count(state.output) >= config.outputCapacity then
 		return state, "output_full"
 	end
+	local readyAt = finishAt(now, Sluice.processSeconds(state, config))
+	assert(readyAt > now and readyAt < math.huge, "Sluice: invalid lane finish time")
 	local result = table.clone(state)
 	result.lanes = table.clone(state.lanes)
-	result.lanes[lane] = table.freeze({ batch = batchId, readyAt = now + config.processSeconds })
+	result.lanes[lane] = table.freeze({ batch = batchId, readyAt = readyAt })
 	result.processed = table.clone(state.processed)
 	result.processed[batchId] = true
 	return result, nil

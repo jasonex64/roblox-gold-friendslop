@@ -7,6 +7,7 @@ local Bin = require("../../src/shared/Pure/Bin")
 local Economy = require("../../src/shared/Pure/Economy")
 local Ledger = require("../../src/shared/Pure/Ledger")
 local Config = require("../../src/shared/Config")
+local Timeline = require("../../src/shared/Pure/Timeline")
 local function setup(count, config)
 	local crew = Crew.new(config)
 	local machine, controllers, digs, sifts = Machine.new(config, Sluice, Batch), {}, {}, {}
@@ -69,6 +70,59 @@ return {
 			t.equal(m.contributors["1"].amount, m.settings.price)
 			t.equal(crew.haul, 999)
 		end
+	end,
+	["MACHINE tier two is crew-funded after the build and never lowers haul"] = function(t)
+		for count = 1, 4 do
+			local m, crew, c, _, _, _, _, build = setup(count, Config)
+			t.equal(m.settings.tierTwoPrice, 250 * count)
+			t.equal(m.settings.tierTwoSeconds, 2.5)
+			c["1"].ledger.wallet = 10_000
+			crew.haul = 999
+			t.equal(m.upgrade("1", "Alice", c["1"], 50, "early"), "not_built")
+			t.equal(c["1"].ledger.wallet, 10_000)
+			build()
+			c["1"].ledger.wallet = 10_000
+			local wallet = c["1"].ledger.wallet
+			local result, charged = m.upgrade("1", "Alice", c["1"], 100, "first")
+			t.equal(result, "upgrade_contributed")
+			t.equal(charged, 100)
+			t.equal(m.upgrade("1", "Alice", c["1"], 100, "first"), "duplicate_request")
+			local final, rest = m.upgrade("1", "Alice", c["1"], 10_000, "final")
+			t.equal(final, "tier_two_built")
+			t.equal(rest, m.settings.tierTwoPrice - 100)
+			t.equal(c["1"].ledger.wallet, wallet - m.settings.tierTwoPrice)
+			t.equal(m.upgrade("1", "Alice", c["1"], 1, "late"), "already_upgraded")
+			t.equal(m.contributors["1"].amount, m.settings.price + m.settings.tierTwoPrice)
+			t.equal(crew.haul, 999)
+		end
+	end,
+	["MACHINE lanes loaded after tier two run faster; the rush applies after 9:00"] = function(t)
+		local m, _, c, d, s, _, dirt, build = setup(2, Config)
+		build()
+		dirt("1", "a", 10)
+		m.transfer("1", d["1"], s["1"], "first")
+		m.step(0, true)
+		t.equal(m.state.lanes[1].readyAt, 4)
+		c["1"].ledger.wallet = m.settings.tierTwoPrice
+		m.upgrade("1", "Alice", c["1"], m.settings.tierTwoPrice, "tier")
+		dirt("1", "b", 10)
+		m.transfer("1", d["1"], s["1"], "second")
+		m.step(1, true)
+		t.equal(m.state.lanes[1].readyAt, 4)
+		t.equal(m.state.lanes[2].readyAt, 3.5)
+		-- Session injects Timeline.finishAt (shift started at 0 here).
+		function m.finishAt(start, seconds)
+			return Timeline.finishAt(start, seconds, Config)
+		end
+		m.step(4, true)
+		dirt("1", "c", 10)
+		m.transfer("1", d["1"], s["1"], "third")
+		local load = Config.rushStart - 1
+		m.step(load, true)
+		local lane = m.state.lanes[1] or m.state.lanes[2]
+		t.equal(lane.batch, "c")
+		-- One second at normal speed, the remaining 1.5 s 25% faster.
+		t.equal(lane.readyAt, Config.rushStart + 1.5 / (1 + Config.rushSpeedup))
 	end,
 	["MACHINE rejected contributions never charge or create records"] = function(t)
 		local m, _, c = setup(1, Config)

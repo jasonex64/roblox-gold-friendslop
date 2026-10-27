@@ -409,11 +409,16 @@ machineRemote.OnClientEvent:Connect(function(code, charged, collected)
 			string.format("Deposited %d dirt • Collected %d finds!", charged, collected),
 			collected > 0
 		)
-	elseif code == "contributed" or code == "sluice_built" then
+	elseif
+		code == "contributed"
+		or code == "sluice_built"
+		or code == "upgrade_contributed"
+		or code == "tier_two_built"
+	then
 		assert(type(charged) == "number", "HUD: missing contribution amount")
 		feedback.show(
 			string.format("Contributed $%d! %s", charged, Hud.message(code)),
-			code == "sluice_built"
+			code == "sluice_built" or code == "tier_two_built"
 		)
 	else
 		feedbackCode(code)
