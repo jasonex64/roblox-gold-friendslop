@@ -27,6 +27,8 @@ local service = require(game.ServerScriptService.Server.Economy).new(
 		activity = function()
 			crew.activity(tostring(player.UserId), 0)
 		end,
+		-- T-027 contribution credit; this fixture does not check credit.
+		record = function() end,
 		acceptsPlayer = function()
 			return running
 		end,
