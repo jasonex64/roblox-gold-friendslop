@@ -17,6 +17,9 @@ function Economy.new(config, session, camp, digging, sifting, remote)
 		player:SetAttribute("RunCash", ledger.wallet)
 		player:SetAttribute("CrewHaul", session.crew.haul)
 		player:SetAttribute("ShovelUpgraded", ledger.owned["shovel-2"] == true)
+		player:SetAttribute("ShovelTierThree", ledger.owned["shovel-3"] == true)
+		player:SetAttribute("PanUpgraded", ledger.owned["pan-2"] == true)
+		player:SetAttribute("PanTierThree", ledger.owned["pan-3"] == true)
 		player:SetAttribute("DigSeconds", digging.get(player).digSeconds)
 		local count = 0
 		for _ in sifting.get(player).outputs do
@@ -58,12 +61,14 @@ function Economy.new(config, session, camp, digging, sifting, remote)
 		end
 		return nil
 	end
-	function self.request(player, action, requestId, ...)
+	function self.request(player, action, requestId, itemId, ...)
 		local controller = self.get(player)
 		-- Request IDs are GUIDs, not prices, inventory IDs or desired balances.
 		if
 			select("#", ...) ~= 0
 			or (action ~= "sell" and action ~= "buy")
+			or (action == "sell" and itemId ~= nil)
+			or (itemId ~= nil and itemId ~= "shovel-2" and itemId ~= "shovel-3" and itemId ~= "pan-2" and itemId ~= "pan-3")
 			or type(requestId) ~= "string"
 			or #requestId ~= 36
 			or not string.match(requestId, "^%x+%-%x+%-%x+%-%x+%-%x+$")
@@ -103,7 +108,7 @@ function Economy.new(config, session, camp, digging, sifting, remote)
 			publish(player, result, amount, total)
 			return result, amount, total
 		else
-			result = controller.buy(requestId)
+			result = controller.buy(requestId, itemId)
 			amount = 0
 			if result == "purchased" then
 				session.activity(player)

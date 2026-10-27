@@ -17,6 +17,79 @@ local function setup()
 	return economy, dig, sift, find
 end
 return {
+	["TIERS ordered purchases spend only wallet and update both tools immediately"] = function(t)
+		local economy, dig, sift, find = setup()
+		local total = Config.shovelUpgradePrice
+			+ Config.shovelTierThreePrice
+			+ Config.panTierTwoPrice
+			+ Config.panTierThreePrice
+		find("funding", total)
+		economy.sell("funding")
+		for _, id in { "shovel-3", "pan-3" } do
+			local before = economy.ledger
+			t.equal(economy.buy("early-" .. id, id), "missing_prerequisite")
+			t.equal(economy.ledger, before)
+		end
+		for _, id in { "pan-2", "shovel-2", "pan-3", "shovel-3" } do
+			t.equal(economy.buy(id, id), "purchased")
+			t.equal(economy.buy(id, id), "duplicate_request")
+			t.equal(economy.buy("again-" .. id, id), "already_owned")
+			t.equal(economy.ledger.haul, total)
+		end
+		t.equal(economy.ledger.wallet, 0)
+		t.equal(dig.digSeconds, Config.shovelTierThreeSeconds)
+		t.equal(sift.upgrades, 2)
+		t.equal(economy.buy("shovel-3", "pan-2"), "duplicate_request")
+	end,
+	["TIERS invalid catalog entries and unaffordable tiers preserve state"] = function(t)
+		local economy, dig, sift = setup()
+		for _, id in { "pan-1", "shovel-4", "", 3, {}, false } do
+			t.equal(economy.buy("invalid", id), "invalid_request")
+		end
+		for _, id in { "shovel-2", "pan-2" } do
+			local before = economy.ledger
+			t.equal(economy.buy("poor", id), "unaffordable")
+			t.equal(economy.ledger, before)
+		end
+		t.equal(dig.digSeconds, Config.digSeconds)
+		t.equal(sift.upgrades, nil)
+	end,
+	["TIERS pan purchases widen actual subsequent checks and fresh controllers reset"] = function(
+		t
+	)
+		local Sift = require("../../src/shared/Pure/Sift")
+		local SkillCheck = require("../../src/shared/Pure/SkillCheck")
+		local _, dig = setup()
+		local sift = Sift.new(Config, dig, Batch, SkillCheck, function()
+			return 0.5
+		end)
+		sift.upgrades = 0
+		local economy = Economy.new(Config, dig, sift, Batch, Ledger)
+		economy.ledger.wallet = Config.panTierTwoPrice + Config.panTierThreePrice
+		for i, id in { "pan-2", "pan-3" } do
+			t.equal(economy.buy(id, id), "purchased")
+			t.equal(sift.upgrades, i)
+			local now = i * Config.siftSeconds
+			t.equal(
+				dig.start(
+					{ id = id, source = "Bank", digger = "a", distance = 0, now = now },
+					"running"
+				),
+				"started"
+			)
+			t.equal(dig.step(now + Config.digSeconds, 0, "running", "Bank"), "created")
+			t.equal(sift.start(now + Config.digSeconds, id, sift.upgrades, 1), "started")
+			local check = sift.pending.checks[1]
+			local scale = 1 + i * Config.siftUpgradeWidth
+			t.equal(check.perfectWidth, Config.siftPerfectWidth * scale)
+			t.equal(check.zoneWidth, (Config.siftPerfectWidth + 2 * Config.siftGoodWidth) * scale)
+			sift.cancel()
+		end
+		local fresh, freshDig = setup()
+		t.equal(next(fresh.ledger.owned), nil)
+		t.equal(fresh.ledger.wallet, 0)
+		t.equal(freshDig.digSeconds, Config.digSeconds)
+	end,
 	["CREW sale preparation preserves inventory until explicit commit"] = function(t)
 		local economy, dig, sift, find = setup()
 		find("gold", 57)

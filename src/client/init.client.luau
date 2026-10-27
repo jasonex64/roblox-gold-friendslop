@@ -58,6 +58,7 @@ local feedback = require(script.Toast).new(root, Theme)
 local dock = Theme.surface(root, "ActionDock", Theme.white)
 local primary = Theme.button(dock, "Primary", "Get ready!", Theme.green)
 local buy = Theme.button(dock, "Upgrade", "Shovel", Theme.gold)
+local buyPan = Theme.button(dock, "PanUpgrade", "Pan", Theme.cyan)
 local sluiceStats = Theme.button(dock, "SluiceStats", "Sluice stats", Theme.cyan)
 local binPanel = require(script.BinPanel).new(root, Theme, function(action, quantity)
 	binRemote:FireServer(
@@ -183,6 +184,12 @@ local function layout()
 	place(dock, w - dw - 12, h - bottom - 64, dw, 64)
 	place(primary, 10, 10, dw - 20, 44)
 	place(buy, dw - 125, 10, 115, 44)
+	if buy.Visible then
+		buy.Position = UDim2.fromOffset(10, 10)
+		buy.Size = UDim2.new(0.5, -15, 0, 44)
+		buyPan.Position = UDim2.new(0.5, 5, 0, 10)
+		buyPan.Size = UDim2.new(0.5, -15, 0, 44)
+	end
 	binPanel.layout(w, h)
 	sluicePanel.layout(w, h)
 	local sw = math.min(w - 32, 360)
@@ -257,7 +264,12 @@ cancel.Activated:Connect(function()
 	actionRemote:FireServer("cancel")
 end)
 buy.Activated:Connect(function()
-	actionRemote:FireServer("buy")
+	local item = if player:GetAttribute("ShovelUpgraded") then "shovel-3" else "shovel-2"
+	economyRemote:FireServer("buy", game:GetService("HttpService"):GenerateGUID(false), item)
+end)
+buyPan.Activated:Connect(function()
+	local item = if player:GetAttribute("PanUpgraded") then "pan-3" else "pan-2"
+	economyRemote:FireServer("buy", game:GetService("HttpService"):GenerateGUID(false), item)
 end)
 local actions = {
 	open_bin = "open crew bin",
@@ -332,12 +344,36 @@ local function refresh()
 	primary.Visible = action ~= nil and action ~= "none" and action ~= "buy"
 
 	buy.Visible = member and player:GetAttribute("Station") == "Camp" and phase == "running"
-	buy.Caption.Text = if player:GetAttribute("ShovelUpgraded")
-		then "Shovel Owned"
-		else string.format("Shovel $%d", Config.shovelUpgradePrice)
+	buyPan.Visible = buy.Visible
+	buy.Caption.Text = if player:GetAttribute("ShovelTierThree")
+		then "Shovel max tier"
+		elseif player:GetAttribute("ShovelUpgraded") then string.format(
+			"Shovel III $%d\n%gs per dig",
+			Config.shovelTierThreePrice,
+			Config.shovelTierThreeSeconds
+		)
+		else string.format(
+			"Shovel II $%d\n%gs per dig",
+			Config.shovelUpgradePrice,
+			Config.upgradedDigSeconds
+		)
+	buyPan.Caption.Text = if player:GetAttribute("PanTierThree")
+		then "Pan max tier"
+		elseif player:GetAttribute("PanUpgraded") then string.format(
+			"Pan III $%d\nWider zones • this shift",
+			Config.panTierThreePrice
+		)
+		else string.format("Pan II $%d\nWider zones • this shift", Config.panTierTwoPrice)
 	primary.Size = UDim2.new(1, if buy.Visible then -145 else -20, 0, 44)
 	buy.Position = if primary.Visible then UDim2.new(1, -125, 0, 10) else UDim2.fromOffset(10, 10)
 	buy.Size = if primary.Visible then UDim2.fromOffset(115, 44) else UDim2.new(1, -20, 0, 44)
+	if buy.Visible then
+		primary.Visible = false
+		buy.Position = UDim2.fromOffset(10, 10)
+		buy.Size = UDim2.new(0.5, -15, 0, 44)
+		buyPan.Position = UDim2.new(0.5, 5, 0, 10)
+		buyPan.Size = UDim2.new(0.5, -15, 0, 44)
+	end
 	sluiceStats.Visible = action == "open_sluice"
 	if sluiceStats.Visible then
 		primary.Size = UDim2.new(0.6, -16, 0, 44)

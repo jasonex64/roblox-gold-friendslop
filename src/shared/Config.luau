@@ -26,12 +26,16 @@ return table.freeze({
 	digSeconds = 1, -- D-024
 	shovelUpgradePrice = 50, -- D-018
 	upgradedDigSeconds = 0.8, -- D-018
+	shovelTierThreePrice = 120, -- D-041
+	shovelTierThreeSeconds = 0.625, -- D-041
+	panTierTwoPrice = 50, -- D-042
+	panTierThreePrice = 120, -- D-042
 	siftSeconds = 6, -- D-022
 	siftChecks = 3, -- D-015
 	siftSweepSeconds = 2, -- D-015
 	siftPerfectWidth = 0.05, -- D-016
 	siftGoodWidth = 0.10, -- D-016
-	siftUpgradeWidth = 0.25, -- D-015
+	siftUpgradeWidth = 0.25, -- D-042
 	siftPerfectBonus = 0.20, -- D-015
 	siftGoodBonus = 0.10, -- D-015
 	siftMissPenalty = 0.20, -- D-015
