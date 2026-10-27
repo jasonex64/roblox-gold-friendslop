@@ -33,7 +33,7 @@ GitHub main (truth) --git pull--> your folder --rojo serve--> your Roblox Studio
 
 ## Every session
 
-For the latest development summary, PR history and resume checklist, read [the project handoff](docs/HANDOFF.md).
+For current status run `python tools/board.py`; decisions are in [DECISIONS.md](docs/DECISIONS.md) and each ticket's Log. [The project handoff](docs/HANDOFF.md) is a historical Gate A snapshot (October 22) with the early PR history.
 
 1. `git checkout main && git pull`
 2. `rojo serve`, open Studio, Rojo plugin -> Connect.
