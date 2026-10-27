@@ -8,7 +8,7 @@ function Machinery.new(session, camp, digging, economy, sifting)
 		assert(player:IsA("Player") and player.Parent == Players, "Machinery: invalid player")
 		if
 			select("#", ...) ~= 0
-			or (action ~= "contribute" and action ~= "upgrade" and action ~= "transfer")
+			or (action ~= "contribute" and action ~= "upgrade" and action ~= "hopper" and action ~= "transfer")
 			or type(runId) ~= "string"
 			or type(requestId) ~= "string"
 			or #requestId ~= 36
@@ -16,7 +16,7 @@ function Machinery.new(session, camp, digging, economy, sifting)
 		then
 			return "invalid_request"
 		end
-		if action == "contribute" or action == "upgrade" then
+		if action ~= "transfer" then
 			if
 				type(payload) ~= "number"
 				or not (payload > 0 and payload <= 2 ^ 53 - 1 and payload % 1 == 0)
@@ -36,7 +36,7 @@ function Machinery.new(session, camp, digging, economy, sifting)
 			return "stand_at_sluice"
 		end
 		local id, result, charged, collected = tostring(player.UserId), nil, nil, nil
-		if action == "contribute" or action == "upgrade" then
+		if action ~= "transfer" then
 			result, charged = session.machine[action](
 				id,
 				player.DisplayName,
@@ -66,6 +66,8 @@ function Machinery.new(session, camp, digging, economy, sifting)
 			or result == "sluice_built"
 			or result == "upgrade_contributed"
 			or result == "tier_two_built"
+			or result == "hopper_contributed"
+			or result == "hopper_built"
 			or result == "sluice_transferred"
 		then
 			session.activity(player)
@@ -75,6 +77,8 @@ function Machinery.new(session, camp, digging, economy, sifting)
 			or result == "sluice_built"
 			or result == "upgrade_contributed"
 			or result == "tier_two_built"
+			or result == "hopper_contributed"
+			or result == "hopper_built"
 		then
 			session.record(player, "funded", charged, "fund:" .. id .. ":" .. requestId)
 		elseif result == "sluice_transferred" and charged > 0 then

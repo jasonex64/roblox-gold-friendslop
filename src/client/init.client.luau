@@ -414,11 +414,13 @@ machineRemote.OnClientEvent:Connect(function(code, charged, collected)
 		or code == "sluice_built"
 		or code == "upgrade_contributed"
 		or code == "tier_two_built"
+		or code == "hopper_contributed"
+		or code == "hopper_built"
 	then
 		assert(type(charged) == "number", "HUD: missing contribution amount")
 		feedback.show(
 			string.format("Contributed $%d! %s", charged, Hud.message(code)),
-			code == "sluice_built" or code == "tier_two_built"
+			code == "sluice_built" or code == "tier_two_built" or code == "hopper_built"
 		)
 	else
 		feedbackCode(code)

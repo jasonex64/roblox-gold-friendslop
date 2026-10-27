@@ -10,6 +10,8 @@ export type State = {
 	built: boolean,
 	tierTwoFunded: number,
 	tierTwo: boolean,
+	hopperFunded: number,
+	hopper: boolean,
 	lanes: { [number]: Lane },
 	output: { [string]: boolean },
 	processed: { [string]: boolean },
@@ -22,6 +24,7 @@ export type Config = {
 	outputCapacity: number,
 	tierTwoPrice: number,
 	tierTwoSeconds: number,
+	hopperPrice: number,
 }
 
 -- IEEE-754 exact-integer bound, not a gameplay limit or tuning value.
@@ -64,11 +67,15 @@ function Sluice.new(config: Config): State
 		config.tierTwoSeconds > 0 and config.tierTwoSeconds < config.processSeconds,
 		"Sluice: tierTwoSeconds must be positive and faster than processSeconds"
 	)
+	money(config.hopperPrice, "hopperPrice")
+	assert(config.hopperPrice > 0, "Sluice: hopperPrice must be positive")
 	return {
 		funded = 0,
 		built = false,
 		tierTwoFunded = 0,
 		tierTwo = false,
+		hopperFunded = 0,
+		hopper = false,
 		lanes = {},
 		output = {},
 		processed = {},
@@ -114,8 +121,36 @@ function Sluice.contribute(
 	return result, charged, nil
 end
 
--- D-043: tier two is funded like the build, only once the sluice is built. It changes
--- the speed of lanes loaded afterwards; lanes already running keep their finish time.
+-- Add-ons (tier two, hopper) are funded like the build, only once the sluice is built,
+-- in either order. Returns the amount to deduct, or a rejection reason.
+local function addon(
+	state: State,
+	done: boolean,
+	funded: number,
+	price: number,
+	wallet: number,
+	amount: number,
+	requestId: string,
+	already: string
+): (number, string?)
+	if duplicate(state, wallet, amount, requestId) then
+		return 0, "duplicate_request"
+	end
+	if not state.built then
+		return 0, "not_built"
+	end
+	if done then
+		return 0, already
+	end
+	local charged = math.min(amount, price - funded)
+	if wallet < charged then
+		return 0, "insufficient_funds"
+	end
+	return charged, nil
+end
+
+-- D-043: tier two changes the speed of lanes loaded afterwards; lanes already running
+-- keep their finish time.
 function Sluice.upgrade(
 	state: State,
 	config: Config,
@@ -123,22 +158,51 @@ function Sluice.upgrade(
 	amount: number,
 	requestId: string
 ): (State, number, string?)
-	if duplicate(state, wallet, amount, requestId) then
-		return state, 0, "duplicate_request"
-	end
-	if not state.built then
-		return state, 0, "not_built"
-	end
-	if state.tierTwo then
-		return state, 0, "already_upgraded"
-	end
-	local charged = math.min(amount, config.tierTwoPrice - state.tierTwoFunded)
-	if wallet < charged then
-		return state, 0, "insufficient_funds"
+	local charged, reason = addon(
+		state,
+		state.tierTwo,
+		state.tierTwoFunded,
+		config.tierTwoPrice,
+		wallet,
+		amount,
+		requestId,
+		"already_upgraded"
+	)
+	if reason then
+		return state, 0, reason
 	end
 	local result = table.clone(state)
 	result.tierTwoFunded += charged
 	result.tierTwo = result.tierTwoFunded == config.tierTwoPrice
+	result.requests = table.clone(state.requests)
+	result.requests[requestId] = true
+	return result, charged, nil
+end
+
+-- D-044: the hopper is the only automatic bin-to-sluice path; the server feeds it.
+function Sluice.hopper(
+	state: State,
+	config: Config,
+	wallet: number,
+	amount: number,
+	requestId: string
+): (State, number, string?)
+	local charged, reason = addon(
+		state,
+		state.hopper,
+		state.hopperFunded,
+		config.hopperPrice,
+		wallet,
+		amount,
+		requestId,
+		"hopper_already_built"
+	)
+	if reason then
+		return state, 0, reason
+	end
+	local result = table.clone(state)
+	result.hopperFunded += charged
+	result.hopper = result.hopperFunded == config.hopperPrice
 	result.requests = table.clone(state.requests)
 	result.requests[requestId] = true
 	return result, charged, nil
