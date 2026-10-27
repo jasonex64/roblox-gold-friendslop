@@ -2,7 +2,7 @@
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local Shift = {}
-function Shift.new(session, digging, sifting, economy, status, spawn)
+function Shift.new(session, digging, sifting, economy, status, spawn, rewards)
 	local self = { result = nil }
 	function self.publish()
 		local phase, bankSeconds, rushSeconds = session.timeline()
@@ -73,16 +73,30 @@ function Shift.new(session, digging, sifting, economy, status, spawn)
 			end
 		end
 		status:SetAttribute("ReplayVotes", votes)
+		status:SetAttribute("RewardsDurable", rewards.durable(session.run.id))
 		for _, player in Players:GetPlayers() do
 			local id = tostring(player.UserId)
 			player:SetAttribute("CrewMember", session.crew.admitted[id] == true)
 			player:SetAttribute("CashShareStatus", session.crew.eligibility(id, session.now()))
 			player:SetAttribute("ReplayReady", session.crew.votes[id] == true)
 			player:SetAttribute("CrewHaul", session.crew.haul)
+			local reward = rewards.result(session.run.id, player.UserId)
+			-- One attribute prevents a saved status pairing with another run's amount.
+			player:SetAttribute(
+				"RewardSummary",
+				if reward
+					then HttpService:JSONEncode({
+						runId = session.run.id,
+						status = reward.status,
+						tokens = reward.manifest.claimTokens,
+					})
+					else nil
+			)
 		end
 		status:SetAttribute("Phase", session.run.phase)
 	end
 	local function replay()
+		assert(rewards.durable(session.run.id), "Shift: manifests must be durable before replay")
 		session.reset()
 		self.result = nil
 		for _, member in Players:GetPlayers() do
@@ -113,13 +127,18 @@ function Shift.new(session, digging, sifting, economy, status, spawn)
 				})
 			end
 			self.result = session.finish(entries)
+			rewards.finish(session.rewardSnapshot)
 			for _, player in Players:GetPlayers() do
 				sifting.cancel(player)
 				economy.refresh(player)
 			end
 		end
 		-- Leaving cannot strand ready members or the next-shift queue at results.
-		if session.run.phase == "results" and session.crew.replayReady() then
+		if
+			session.run.phase == "results"
+			and rewards.durable(session.run.id)
+			and session.crew.replayReady()
+		then
 			replay()
 		end
 		self.publish()
@@ -136,7 +155,11 @@ function Shift.new(session, digging, sifting, economy, status, spawn)
 			return "wrong_phase"
 		end
 		local result = session.crew.vote(tostring(player.UserId))
-		if result == "replay_waiting" and session.crew.replayReady() then
+		if
+			result == "replay_waiting"
+			and rewards.durable(session.run.id)
+			and session.crew.replayReady()
+		then
 			replay()
 			result = "replayed"
 		end

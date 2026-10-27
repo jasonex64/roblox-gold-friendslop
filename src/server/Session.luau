@@ -12,6 +12,8 @@ local Batch = require(Shared.Pure.Batch)
 local Contributions = require(Shared.Pure.Contributions)
 local Timeline = require(Shared.Pure.Timeline)
 
+local Participation = require(Shared.Pure.Participation)
+
 local Session = {}
 
 -- Clock and identity are injected by the server, never by a RemoteEvent.
@@ -29,6 +31,36 @@ function Session.new(config, clock: () -> number, runId: string)
 	session.credit = Contributions.new()
 	-- Display names are kept so players who leave still appear on the results screen.
 	session.creditNames = {}
+	session.participation = nil
+	session.rewardSnapshot = nil
+	local activity = session.crew.activity
+	function session.crew.activity(id, now)
+		if session.participation and not session.participation.frozen then
+			session.participation.sample(now, session.crew)
+		end
+		activity(id, now)
+	end
+	local leave = session.crew.leave
+	function session.crew.leave(id)
+		if session.participation and not session.participation.frozen then
+			session.participation.sample(clock(), session.crew)
+		end
+		leave(id)
+	end
+	function session.reveal(find)
+		assert(session.participation, "Session: reveal before start")
+		return session.participation.reveal(find, clock(), session.crew)
+	end
+	local machineStep = session.machine.step
+	function session.machine.step(now, allowed)
+		local finished = machineStep(now, allowed)
+		if allowed then
+			for _, find in session.machine.outputs do
+				session.reveal(find)
+			end
+		end
+		return finished
+	end
 	function session.record(player, kind: string, amount: number, eventId: string)
 		local id = tostring(player.UserId)
 		local credit, reason = Contributions.record(session.credit, id, kind, amount, eventId)
@@ -70,6 +102,12 @@ function Session.new(config, clock: () -> number, runId: string)
 			session.crew.start(session.run.startedAt)
 			session.bin.start(session.run.id, #session.crew.members())
 			session.machine.start(#session.crew.members())
+			session.participation = Participation.new(
+				session.run.startedAt,
+				session.run.endsAt,
+				session.crew.members(),
+				config
+			)
 		end
 	end
 	-- Future production handlers must call this gate with the current server clock.
@@ -86,6 +124,14 @@ function Session.new(config, clock: () -> number, runId: string)
 		return clock()
 	end
 	function session.finish(entries)
+		assert(session.participation, "Session: missing participation")
+		session.rewardSnapshot = session.participation.finish(
+			session.run.id,
+			config.rulesVersion,
+			session.crew.haul,
+			clock(),
+			session.crew
+		)
 		session.machine.clear()
 		session.bin.clear()
 		return Settlement.finish(session.run, entries, Run, session.crew.haul)
@@ -97,6 +143,7 @@ function Session.new(config, clock: () -> number, runId: string)
 		session.credit = Contributions.new()
 		session.creditNames = {}
 		session.run = Run.reset(session.run)
+		session.participation, session.rewardSnapshot = nil, nil
 	end
 	function session.remaining()
 		return Hud.remaining(session.run, clock())

@@ -48,7 +48,45 @@ status.Name = "RunStatus"
 status:SetAttribute("RunId", session.run.id)
 status:SetAttribute("RulesVersion", Config.rulesVersion)
 status.Parent = ReplicatedStorage
-local shift = require(script.Shift).new(session, digging, sifting, economy, status, spawn)
+local Profile = require(ReplicatedStorage.Shared.Pure.Profile)
+local RunRewards = require(ReplicatedStorage.Shared.Pure.RunRewards)
+local progression =
+	require(script.Progression).new(require(script.Progression.DataStore)("Progression"), Profile)
+local rewards = require(script.RewardFlow).new(
+	progression,
+	RunRewards.build,
+	Config,
+	task.spawn,
+	function(id, state)
+		local player = Players:GetPlayerByUserId(id)
+		if player and state then
+			player:SetAttribute("ProfileStatus", state.status)
+			player:SetAttribute("ClaimTokens", if state.profile then state.profile.tokens else nil)
+		end
+	end
+)
+local shift = require(script.Shift).new(session, digging, sifting, economy, status, spawn, rewards)
+local rewardRemote = Instance.new("RemoteEvent")
+rewardRemote.Name = "RewardRequest"
+rewardRemote.OnServerEvent:Connect(function(player, action, ...)
+	if action ~= "recover" or select("#", ...) ~= 0 then
+		error("RewardRequest: invalid request")
+	end
+	if session.run.phase == "running" or session.run.phase == "ended" then
+		rewardRemote:FireClient(player, "wrong_phase")
+	elseif session.run.phase == "results" then
+		rewardRemote:FireClient(player, rewards.retry(session.run.id))
+	else
+		rewardRemote:FireClient(player, rewards.recover(player.UserId))
+	end
+end)
+rewardRemote.Parent = ReplicatedStorage
+game:BindToClose(function()
+	while next(rewards.busy) do
+		task.wait()
+	end
+	rewards.shutdown()
+end)
 local sharedBin = require(script.SharedBin).new(session, workspace.RiverCamp, digging)
 local binRemote = Instance.new("RemoteEvent")
 binRemote.Name = "BinRequest"
@@ -101,6 +139,7 @@ end
 gate.Parent = script
 
 local function equip(player)
+	rewards.recover(player.UserId)
 	session.crew.join(tostring(player.UserId))
 	digging.add(player)
 	sifting.add(player)
@@ -201,7 +240,11 @@ RunService.Heartbeat:Connect(function()
 	for _, player in players do
 		if
 			session.crew.admitted[tostring(player.UserId)]
-			and (not player.Character or not player.Character:FindFirstChild("HumanoidRootPart"))
+			and (
+				not rewards.ready(player.UserId)
+				or not player.Character
+				or not player.Character:FindFirstChild("HumanoidRootPart")
+			)
 		then
 			ready = false
 		end

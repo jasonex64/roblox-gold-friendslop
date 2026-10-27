@@ -142,6 +142,7 @@ function Sifting.new(config, session, camp, digging, remote)
 		end
 		if find then
 			session.record(player, "processed", 1, "sift:" .. find.id)
+			session.reveal(find)
 		end
 		publish(player, if find then "completed" else result, find)
 		return result
@@ -152,6 +153,7 @@ function Sifting.new(config, session, camp, digging, remote)
 			local result, find = controller.step(session.now(), allowed(player))
 			if find then
 				session.record(player, "processed", 1, "sift:" .. find.id)
+				session.reveal(find)
 			end
 			if
 				result == "completed"

@@ -13,6 +13,7 @@ local actionRemote = ReplicatedStorage:WaitForChild("ActionRequest")
 local siftRemote = ReplicatedStorage:WaitForChild("SiftRequest")
 local economyRemote = ReplicatedStorage:WaitForChild("EconomyRequest")
 local runRemote = ReplicatedStorage:WaitForChild("RunRequest")
+local rewardRemote = ReplicatedStorage:WaitForChild("RewardRequest")
 local binRemote = ReplicatedStorage:WaitForChild("BinRequest")
 local machineRemote = ReplicatedStorage:WaitForChild("MachineRequest")
 local gui = Instance.new("ScreenGui")
@@ -84,7 +85,7 @@ local helpCopy = Theme.text(
 	helpPanel,
 	"Steps",
 	string.format(
-		"1. BANK: tap Dig or press E. Stay put until the batch is ready.\n2. RIVER: tap Sift, then hit each gold/green zone (tap or Space). Cancel trashes active dirt.\n3. BUYER: sell finds. Eligible crew split the cash; Crew Haul counts the whole sale.\n4. CREW BIN: share dirt using All or a quantity slider.\n5. CAMP: a $%d temporary shovel makes digs %.1fs. Resets after this shift.\n\nAT THE BELL: all unsold finds, raw dirt and incomplete sifts are discarded without payment. Only shop sales count. Replay resets cash, inventory, upgrades and opening finds. No permanent rewards saved. Everyone in the crew must choose Play Again.",
+		"1. BANK: tap Dig or press E. Stay put until the batch is ready.\n2. RIVER: tap Sift, then hit each gold/green zone (tap or Space). Cancel trashes active dirt.\n3. BUYER: sell finds. Eligible crew split the cash; Crew Haul counts the whole sale.\n4. CREW BIN: share dirt using All or a quantity slider.\n5. CAMP: a $%d temporary shovel makes digs %.1fs. Resets after this shift.\n\nAT THE BELL: all unsold finds, raw dirt and incomplete sifts are discarded without payment. Only shop sales count. Replay resets cash, inventory, upgrades and opening finds. Permanent tokens and discoveries are saved only when confirmed. Everyone in the crew must choose Play Again.",
 		Config.shovelUpgradePrice,
 		Config.upgradedDigSeconds
 	),
@@ -150,7 +151,7 @@ resultCredits.TextXAlignment = Enum.TextXAlignment.Left
 local resultCopy = Theme.text(
 	results,
 	"ResetRules",
-	"Only shop sales counted. Unsold items discarded without payment.\nReplay resets cash, inventory, upgrades and opening finds.\nNo permanent rewards saved. Everyone in the crew must choose Play Again.",
+	"Only shop sales counted. Unsold items discarded without payment.\nReplay resets cash, inventory, upgrades and opening finds.\nPermanent tokens and discoveries are saved only when confirmed. Everyone in the crew must choose Play Again.",
 	16,
 	false
 )
@@ -159,6 +160,16 @@ replay.Activated:Connect(function()
 	if player:GetAttribute("CrewMember") and not player:GetAttribute("ReplayReady") then
 		runRemote:FireServer("replay", status:GetAttribute("RunId"))
 	end
+end)
+local retryRewards = Theme.button(results, "RetryRewards", "Retry saving", Theme.cyan)
+retryRewards.Activated:Connect(function()
+	rewardRemote:FireServer("recover")
+end)
+local profilePanel = Theme.surface(root, "ProfileStatus", Theme.white)
+local profileText = Theme.text(profilePanel, "Message", "Loading saved progress...", 20, false)
+local profileRetry = Theme.button(profilePanel, "Retry", "Retry loading", Theme.cyan)
+profileRetry.Activated:Connect(function()
+	rewardRemote:FireServer("recover")
 end)
 local current = nil
 local sent = false
@@ -215,7 +226,11 @@ local function layout()
 	place(resultTile, 18, 50, mw - 36, 75)
 	place(resultCredits, 18, 132, mw - 36, ch)
 	place(resultCopy, 18, 136 + ch, mw - 36, rh - 203 - ch)
-	place(replay, 18, rh - 56, mw - 36, 44)
+	place(replay, 18, rh - 56, (mw - 44) / 2, 44)
+	place(retryRewards, mw / 2 + 4, rh - 56, (mw - 44) / 2, 44)
+	place(profilePanel, (w - mw) / 2, (h - 140) / 2, mw, 140)
+	place(profileText, 12, 8, mw - 24, 66)
+	place(profileRetry, 18, 84, mw - 36, 44)
 end
 root:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
 layout()
@@ -397,17 +412,50 @@ local function refresh()
 		)
 	end
 	siftPanel.Visible = current ~= nil and phase == "running"
+	local profileState = player:GetAttribute("ProfileStatus")
+	profilePanel.Visible = phase ~= "running" and phase ~= "results" and profileState ~= "loaded"
+	profileText.Text = if profileState == "failed"
+		then "Saved progress could not load. Your data was not reset. Retry to continue."
+		else "Loading saved progress..."
+	profileRetry.Visible = profileState == "failed"
 	local result = status:GetAttribute("ResultHaul")
 	-- Both attributes are set together on the server but replicate one at a time.
 	local credits = status:GetAttribute("ResultCredits")
 	results.Visible = phase == "results" and result ~= nil and credits ~= nil
 	if results.Visible then
 		helpPanel.Visible = false
+		local encodedReward = player:GetAttribute("RewardSummary")
+		local reward = if encodedReward
+			then game:GetService("HttpService"):JSONDecode(encodedReward)
+			else nil
+		local rewardState = if reward then reward.status else nil
+		local sameRun = reward ~= nil and reward.runId == status:GetAttribute("RunId")
+		local rewardCopy = if member
+			then "Rewards pending. Waiting for storage confirmation."
+			else "Not a participant in this shift."
+		if sameRun then
+			if rewardState == "saved" then
+				rewardCopy =
+					string.format("Saved: +%d Claim Tokens. Discoveries retained.", reward.tokens)
+			elseif rewardState == "failed" or profileState == "failed" then
+				rewardCopy =
+					"Saving failed or unconfirmed. Retry saving; rewards are not confirmed."
+			else
+				rewardCopy = "Rewards pending. Waiting for storage confirmation."
+			end
+		end
+		resultCopy.Text = rewardCopy
+			.. "\nOnly shop sales count. Replay resets cash, inventory and temporary upgrades; saved progress stays."
+		retryRewards.Visible = (sameRun and (rewardState == "failed" or profileState == "failed"))
+			or status:GetAttribute("RewardsDurable") == false
 		resultHaul.Text = string.format("Crew Haul\n$%d", result)
 		assert(type(credits) == "string", "HUD: ResultCredits must be JSON text")
 		resultCredits.Text = Hud.credits(game:GetService("HttpService"):JSONDecode(credits))
 		local votes = status:GetAttribute("ReplayVotes")
-		if votes ~= nil and crewCount ~= nil then
+		if status:GetAttribute("RewardsDurable") == false then
+			replay.Caption.Text = "Waiting for reward storage"
+		end
+		if votes ~= nil and crewCount ~= nil and status:GetAttribute("RewardsDurable") then
 			replay.Caption.Text = if not member
 				then "Waiting for crew to replay"
 				elseif player:GetAttribute("ReplayReady") then string.format(
