@@ -30,6 +30,10 @@ local function validate(config: any)
 			"digSeconds",
 			"shovelUpgradePrice",
 			"upgradedDigSeconds",
+			"shovelTierThreePrice",
+			"shovelTierThreeSeconds",
+			"panTierTwoPrice",
+			"panTierThreePrice",
 			"siftSeconds",
 			"siftChecks",
 			"siftSweepSeconds",
@@ -113,6 +117,9 @@ local function validate(config: any)
 			"outputCapacity",
 			"siftChecks",
 			"shovelUpgradePrice",
+			"shovelTierThreePrice",
+			"panTierTwoPrice",
+			"panTierThreePrice",
 		}
 	do
 		assert(config[key] % 1 == 0, "Config." .. key .. " must be an integer")

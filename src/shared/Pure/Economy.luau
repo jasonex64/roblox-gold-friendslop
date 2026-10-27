@@ -6,7 +6,22 @@ function Economy.new(config, dig, sift, Batch, Ledger)
 	local self = {
 		ledger = { wallet = 0, haul = 0, finds = {}, owned = {}, requests = {} },
 	}
-	local shovel = { id = "shovel-2", price = config.shovelUpgradePrice, prerequisites = {} }
+	local catalog = {
+		["shovel-2"] = {
+			id = "shovel-2",
+			price = config.shovelUpgradePrice,
+			prerequisites = {},
+			seconds = config.upgradedDigSeconds,
+		},
+		["shovel-3"] = {
+			id = "shovel-3",
+			price = config.shovelTierThreePrice,
+			prerequisites = { "shovel-2" },
+			seconds = config.shovelTierThreeSeconds,
+		},
+		["pan-2"] = { id = "pan-2", price = config.panTierTwoPrice, prerequisites = {} },
+		["pan-3"] = { id = "pan-3", price = config.panTierThreePrice, prerequisites = { "pan-2" } },
+	}
 	-- Prepare without mutation so the crew can validate every recipient before commit.
 	function self.prepareSale(requestId)
 		if self.ledger.requests[requestId] then
@@ -56,13 +71,24 @@ function Economy.new(config, dig, sift, Batch, Ledger)
 		self.commitSale(prepared)
 		return prepared.result, prepared.amount
 	end
-	function self.buy(requestId)
-		local ledger, reason = Ledger.buy(self.ledger, shovel, requestId)
+	function self.buy(requestId, itemId)
+		-- The original ActionRequest buy remains a tier-two shovel purchase.
+		local id = if itemId == nil then "shovel-2" else itemId
+		if type(id) ~= "string" or not catalog[id] then
+			return "invalid_request"
+		end
+		local item = catalog[id]
+		local ledger, reason = Ledger.buy(self.ledger, item, requestId)
 		if reason then
 			return reason
 		end
 		self.ledger = ledger
-		dig.digSeconds = config.upgradedDigSeconds
+		if item.seconds then
+			dig.digSeconds = item.seconds
+		else
+			-- One widening step per owned pan upgrade; the scale lives in Config.
+			sift.upgrades = #item.prerequisites + 1
+		end
 		return "purchased"
 	end
 	return self
