@@ -7,9 +7,11 @@ local Bin = require("../../src/shared/Pure/Bin")
 local Economy = require("../../src/shared/Pure/Economy")
 local Ledger = require("../../src/shared/Pure/Ledger")
 local Config = require("../../src/shared/Config")
+local Timeline = require("../../src/shared/Pure/Timeline")
 local function setup(count, config)
 	local crew = Crew.new(config)
-	local machine, controllers, digs, sifts = Machine.new(config, Sluice, Batch), {}, {}, {}
+	local bin = Bin.new(config, crew)
+	local machine, controllers, digs, sifts = Machine.new(config, Sluice, Batch, bin), {}, {}, {}
 	for i = 1, count do
 		local id = tostring(i)
 		crew.join(id)
@@ -19,7 +21,6 @@ local function setup(count, config)
 	end
 	crew.start(0)
 	machine.start(count)
-	local bin = Bin.new(config, crew)
 	bin.start("run", count)
 	local function dirt(id, key, value)
 		local item = table.freeze({
@@ -69,6 +70,135 @@ return {
 			t.equal(m.contributors["1"].amount, m.settings.price)
 			t.equal(crew.haul, 999)
 		end
+	end,
+	["MACHINE tier two is crew-funded after the build and never lowers haul"] = function(t)
+		for count = 1, 4 do
+			local m, crew, c, _, _, _, _, build = setup(count, Config)
+			t.equal(m.settings.tierTwoPrice, 250 * count)
+			t.equal(m.settings.tierTwoSeconds, 2.5)
+			c["1"].ledger.wallet = 10_000
+			crew.haul = 999
+			t.equal(m.upgrade("1", "Alice", c["1"], 50, "early"), "not_built")
+			t.equal(c["1"].ledger.wallet, 10_000)
+			build()
+			c["1"].ledger.wallet = 10_000
+			local wallet = c["1"].ledger.wallet
+			local result, charged = m.upgrade("1", "Alice", c["1"], 100, "first")
+			t.equal(result, "upgrade_contributed")
+			t.equal(charged, 100)
+			t.equal(m.upgrade("1", "Alice", c["1"], 100, "first"), "duplicate_request")
+			local final, rest = m.upgrade("1", "Alice", c["1"], 10_000, "final")
+			t.equal(final, "tier_two_built")
+			t.equal(rest, m.settings.tierTwoPrice - 100)
+			t.equal(c["1"].ledger.wallet, wallet - m.settings.tierTwoPrice)
+			t.equal(m.upgrade("1", "Alice", c["1"], 1, "late"), "already_upgraded")
+			t.equal(m.contributors["1"].amount, m.settings.price + m.settings.tierTwoPrice)
+			t.equal(crew.haul, 999)
+		end
+	end,
+	["MACHINE lanes loaded after tier two run faster; the rush applies after 9:00"] = function(t)
+		local m, _, c, d, s, _, dirt, build = setup(2, Config)
+		build()
+		dirt("1", "a", 10)
+		m.transfer("1", d["1"], s["1"], "first")
+		m.step(0, true)
+		t.equal(m.state.lanes[1].readyAt, 4)
+		c["1"].ledger.wallet = m.settings.tierTwoPrice
+		m.upgrade("1", "Alice", c["1"], m.settings.tierTwoPrice, "tier")
+		dirt("1", "b", 10)
+		m.transfer("1", d["1"], s["1"], "second")
+		m.step(1, true)
+		t.equal(m.state.lanes[1].readyAt, 4)
+		t.equal(m.state.lanes[2].readyAt, 3.5)
+		-- Session injects Timeline.finishAt (shift started at 0 here).
+		function m.finishAt(start, seconds)
+			return Timeline.finishAt(start, seconds, Config)
+		end
+		m.step(4, true)
+		dirt("1", "c", 10)
+		m.transfer("1", d["1"], s["1"], "third")
+		local load = Config.rushStart - 1
+		m.step(load, true)
+		local lane = m.state.lanes[1] or m.state.lanes[2]
+		t.equal(lane.batch, "c")
+		-- One second at normal speed, the remaining 1.5 s 25% faster.
+		t.equal(lane.readyAt, Config.rushStart + 1.5 / (1 + Config.rushSpeedup))
+	end,
+	["MACHINE hopper feeds bin dirt into free lanes atomically and pauses when full"] = function(t)
+		local m, crew, c, d, s, bin, dirt, build = setup(2, Config)
+		t.equal(m.settings.hopperPrice, 150 * 2)
+		build()
+		c["1"].ledger.wallet = 10_000
+		crew.haul = 7
+		t.equal(m.hopper("1", "Alice", c["1"], 100, "first"), "hopper_contributed")
+		-- Before it is built, bin dirt stays in the bin.
+		for i = 1, 5 do
+			dirt("2", string.format("b%d", i), 10 + i)
+		end
+		t.equal(bin.transfer("2", d["2"], "deposit", "run", bin.revision, "all", true), "deposited")
+		local original = bin.batches.b1
+		m.step(0, true)
+		t.equal(bin.count(), 5)
+		t.equal(m.dirtCount(), 0)
+		local result, charged = m.hopper("1", "Alice", c["1"], 10_000, "final")
+		t.equal(result, "hopper_built")
+		t.equal(charged, 200)
+		t.equal(m.hopper("1", "Alice", c["1"], 1, "late"), "hopper_already_built")
+		t.equal(crew.haul, 7)
+		-- Two lanes: two bin dirt move in, lowest IDs first, keeping their outcomes.
+		local revision = bin.revision
+		m.step(1, true)
+		t.equal(bin.count(), 3)
+		t.equal(bin.revision, revision + 1)
+		t.equal(m.batches.b1.outcome, original.outcome)
+		t.equal(m.batches.b1.status, "processing")
+		t.equal(bin.batches.b1, nil)
+		t.equal(m.state.lanes[1].batch, "b1")
+		t.equal(m.state.lanes[2].batch, "b2")
+		-- Lanes full: nothing moves and the bin revision is unchanged.
+		m.step(2, true)
+		t.equal(bin.count(), 3)
+		t.equal(bin.revision, revision + 1)
+		-- Manual dirt is loaded before bin dirt.
+		dirt("1", "a1", 9)
+		m.transfer("1", d["1"], s["1"], "manual")
+		m.step(5, true)
+		t.equal(m.state.lanes[1].batch, "a1")
+		t.equal(m.state.lanes[2].batch, "b3")
+		t.equal(bin.count(), 2)
+		-- No dirt is ever in two places.
+		for id in m.batches do
+			t.equal(bin.batches[id], nil)
+		end
+	end,
+	["MACHINE hopper pauses while sluice output is full"] = function(t)
+		local m, _, c, d, _, bin, dirt, build = setup(1, Config)
+		build()
+		c["1"].ledger.wallet = m.settings.hopperPrice
+		m.hopper("1", "Alice", c["1"], m.settings.hopperPrice, "hopper")
+		local cap = m.settings.outputCapacity
+		for i = 1, cap + 2 do
+			dirt("1", string.format("b%03d", i), 5)
+		end
+		bin.capacity = cap + 2
+		t.equal(bin.transfer("1", d["1"], "deposit", "run", bin.revision, "all", true), "deposited")
+		local now = 0
+		for _ = 1, cap + 2 do
+			m.step(now, true)
+			now += Config.sluiceProcessSeconds
+		end
+		m.step(now, true)
+		t.equal(#m.queue, 0)
+		t.equal(bin.count(), 2)
+		local outputs = 0
+		for _ in m.outputs do
+			outputs += 1
+		end
+		t.equal(outputs, cap)
+		local revision = bin.revision
+		m.step(now + 100, true)
+		t.equal(bin.count(), 2)
+		t.equal(bin.revision, revision)
 	end,
 	["MACHINE rejected contributions never charge or create records"] = function(t)
 		local m, _, c = setup(1, Config)

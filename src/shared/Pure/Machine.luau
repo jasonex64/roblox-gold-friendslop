@@ -8,9 +8,14 @@ local function count(items)
 	end
 	return n
 end
-function Machine.new(config, Sluice, Batch)
+function Machine.new(config, Sluice, Batch, bin)
+	assert(bin, "Machine: crew bin required")
 	local self =
 		{ state = nil, settings = nil, batches = {}, outputs = {}, contributors = {}, queue = {} }
+	-- Server may inject the shift timeline (final rush); standalone lanes use constant speed.
+	function self.finishAt(start, seconds)
+		return start + seconds
+	end
 	function self.dirtCount()
 		local n = #self.queue
 		if self.state then
@@ -25,6 +30,9 @@ function Machine.new(config, Sluice, Batch)
 			lanes = config.sluiceLanesPerMember * members,
 			processSeconds = config.sluiceProcessSeconds,
 			outputCapacity = config.sluiceOutputPerMember * members,
+			tierTwoPrice = config.sluiceTierTwoPricePerMember * members,
+			tierTwoSeconds = config.sluiceTierTwoSeconds,
+			hopperPrice = config.sluiceHopperPricePerMember * members,
 		}
 		self.state = Sluice.new(self.settings)
 	end
@@ -32,12 +40,13 @@ function Machine.new(config, Sluice, Batch)
 		self.state, self.settings = nil, nil
 		self.batches, self.outputs, self.contributors, self.queue = {}, {}, {}, {}
 	end
-	function self.contribute(id, name, economy, amount, requestId)
+	-- Build and tier-two funding share the D-035 rules and the contributor totals.
+	local function fund(sluiceFund, id, name, economy, amount, requestId)
 		assert(self.state and self.settings, "Machine: not started")
 		if economy.ledger.requests[requestId] then
 			return "duplicate_request", 0
 		end
-		local state, charged, reason = Sluice.contribute(
+		local state, charged, reason = sluiceFund(
 			self.state,
 			self.settings,
 			economy.ledger.wallet,
@@ -55,7 +64,28 @@ function Machine.new(config, Sluice, Batch)
 		local contribution =
 			{ name = name, amount = charged + (if previous then previous.amount else 0) }
 		self.state, economy.ledger, self.contributors[id] = state, ledger, contribution
-		return if state.built then "sluice_built" else "contributed", charged
+		return nil, charged
+	end
+	function self.contribute(id, name, economy, amount, requestId)
+		local reason, charged = fund(Sluice.contribute, id, name, economy, amount, requestId)
+		if reason then
+			return reason, 0
+		end
+		return if self.state.built then "sluice_built" else "contributed", charged
+	end
+	function self.upgrade(id, name, economy, amount, requestId)
+		local reason, charged = fund(Sluice.upgrade, id, name, economy, amount, requestId)
+		if reason then
+			return reason, 0
+		end
+		return if self.state.tierTwo then "tier_two_built" else "upgrade_contributed", charged
+	end
+	function self.hopper(id, name, economy, amount, requestId)
+		local reason, charged = fund(Sluice.hopper, id, name, economy, amount, requestId)
+		if reason then
+			return reason, 0
+		end
+		return if self.state.hopper then "hopper_built" else "hopper_contributed", charged
 	end
 	function self.transfer(id, dig, sift, requestId)
 		assert(self.state and self.settings, "Machine: not started")
@@ -132,7 +162,8 @@ function Machine.new(config, Sluice, Batch)
 			return 0
 		end
 		local state, finished = Sluice.collect(self.state, self.settings, now)
-		if #finished == 0 and #self.queue == 0 then
+		local feeding = state.hopper and bin.count() > 0
+		if #finished == 0 and #self.queue == 0 and not feeding then
 			return 0
 		end
 		local batches, outputs, queue =
@@ -154,7 +185,7 @@ function Machine.new(config, Sluice, Batch)
 		end
 		while #queue > 0 do
 			local id = queue[1]
-			local loaded, reason = Sluice.load(state, self.settings, id, now)
+			local loaded, reason = Sluice.load(state, self.settings, id, now, self.finishAt)
 			if reason then
 				assert(
 					reason == "lanes_full" or reason == "output_full",
@@ -166,7 +197,49 @@ function Machine.new(config, Sluice, Batch)
 			table.remove(queue, 1)
 			state = loaded
 		end
+		-- D-044 hopper: after manual dirt, move bin dirt straight into free lanes. It only
+		-- takes what Sluice.load accepts, so it pauses while lanes or output are full.
+		local binBatches = nil
+		if feeding and #queue == 0 then
+			local waiting = {}
+			for _, item in bin.batches do
+				if item.status == "queued" then
+					table.insert(waiting, item)
+				end
+			end
+			table.sort(waiting, function(a, b)
+				return a.id < b.id
+			end)
+			local inside = count(state.lanes)
+			for _, item in waiting do
+				if inside >= config.sluiceDirtCapacity then
+					break
+				end
+				assert(not batches[item.id], "Machine: hopper duplicate batch " .. item.id)
+				local loaded, reason =
+					Sluice.load(state, self.settings, item.id, now, self.finishAt)
+				if reason then
+					assert(
+						reason == "lanes_full" or reason == "output_full",
+						"Machine: unexpected hopper load rejection " .. reason
+					)
+					break
+				end
+				if not binBatches then
+					binBatches = table.clone(bin.batches)
+				end
+				binBatches[item.id] = nil
+				batches[item.id] = Batch.transition(item, "processing")
+				state = loaded
+				inside += 1
+			end
+		end
+		-- Commit sluice and bin together, without a yield.
 		self.state, self.batches, self.outputs, self.queue = state, batches, outputs, queue
+		if binBatches then
+			bin.batches = binBatches
+			bin.revision += 1
+		end
 		return #finished
 	end
 	return self
