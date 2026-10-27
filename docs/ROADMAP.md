@@ -126,3 +126,27 @@ sifting, shovel and pan tiers, sluice tier two and the hopper, so the tickets ne
 Exit: humans play full shifts, an approved EXP records when crews buy tools and machines
 and use the night bank and rush, and a recorded continue/revise decision closes the gate.
 Gate D (classes, pets, discovery book, saved rewards) stays out of M3.
+
+## M4 — Gate D foundations (parallel preparation)
+
+T-037 plans the next assignments at yukicide's request after skipping Gate C
+playtests. This does not mark T-034 passed or close Gate C. The detailed handoff
+is [GATE_D_CONTRACT.md](GATE_D_CONTRACT.md); no gameplay tuning is newly approved.
+
+| Ticket | Owner / reviewer | Outcome | Depends on | Exclusive source scope |
+|---|---|---|---|---|
+| T-037 | yukicide / jason | Parallel plan and contract | T-031, T-032, T-033 | Docs/tickets only |
+| T-038 | yukicide / jason | Pure reward manifests | T-037 | New RunRewards, reward Config section, ValidateConfig |
+| T-039 | jason / yukicide | Profile and durable reward storage | T-037 | New Profile, ProgressionTypes and server/Progression |
+| T-040 | yukicide / jason | Shift integration and saved/pending results | T-034, T-038, T-039 | Session/Shift, server entrypoint, activity/reveal hooks, client results |
+
+After T-037 is reviewed and merged, T-038 and T-039 can be claimed concurrently.
+Neither edits live gameplay wiring or the other's files. Cross-review the two
+foundation PRs, then integrate through T-040. T-034's skipped validation needs
+an explicit human disposition before live integration; preparation does not
+silently waive that dependency.
+
+This is the first Gate D slice, not the complete milestone. Classes/nodes and
+pets/eggs follow as separate planned tracks, then discovery/record browsing and
+Gate D validation. Class rarity conflicts (D-006 versus DESIGN), remaining
+numeric approvals and validation scope must be settled in those later tickets.
