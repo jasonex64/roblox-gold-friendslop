@@ -12,15 +12,19 @@
 -- discoverable on the next load even if the process stops right after. `apply`
 -- moves it into the profile together with its deduplication marker in one write.
 --
--- Failures are returned as { status = "failed" } outcomes and nothing retries here
--- (AGENTS.md): a failed store leaves no manifest, a failed or unacknowledged apply
--- leaves the manifest pending, and the caller (T-040) applies pending manifests
--- again on a later load. Repeating `store` or `apply` is harmless.
+-- Failures are explicit and nothing retries here (AGENTS.md). A failed request
+-- may have committed if its acknowledgement was lost. Load pending/applied state
+-- to reconcile; repeating store/apply is harmless. Never show failed as saved.
 --
--- Marker growth: each applied run keeps runId -> 8-character fingerprint
--- (about 50 characters). The Roblox limit of 4,194,304 characters per key allows
--- roughly 80,000 applied runs per player before other profile data; markers are
--- never pruned, because pruning would allow a replayed manifest to grant twice.
+-- Schema 2 stores exact payloads, not 32-bit hashes. Schema 1 is rejected as
+-- unsupported_version without writes/reset: its hashes cannot reconstruct the
+-- original applied payloads. No automatic or lossy migration is safe. This
+-- foundation has no live persistence rollout; preserve any old test data for
+-- explicit recovery rather than accepting a legacy hash as proof of equality.
+-- Marker growth is proportional to the full encoded manifest, including its
+-- discovery IDs and record. The old ~80,000-run estimate no longer applies.
+-- Markers are never pruned. Capacity/write failures remain explicit; a durable
+-- archival design is required before deployment beyond the per-key size limit.
 export type Outcome = {
 	status: string,
 	reason: string?,

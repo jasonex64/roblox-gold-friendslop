@@ -81,3 +81,26 @@ All four existing gates pass: check_docs, online board, numbers (four provisiona
 reward values), scripts/check (145 passed, zero failed, ALL CHECKS PASSED).
 The additional focused regression fails as shown above. T-039 stays review with
 criterion 3 unticked; T-040 stays todo/waiting on T-039 and is not started.
+
+## Fix follow-up — 2026-10-26
+
+At yukicide's request, the same PR now replaces the hash with exact canonical
+payload encoding: length-prefixed fields, explicit discovery count/record
+presence, sorted discovery IDs and round-trip numeric precision. Pending and
+applied comparisons both use the complete encoding. Stored pending manifests
+also detach nested tables from caller mutation.
+
+Schema is now 2. Version 1 fails explicitly as unsupported_version, preserving
+its data; hashes cannot reconstruct exact old applied payloads, so no lossy
+migration or silent reset is attempted. This foundation has not been wired to
+live persistence. Any existing test profiles require an explicit recovery plan.
+Full markers grow with manifest size and are never pruned; the old 80,000-run
+estimate is withdrawn. Storage limits still need an archival plan before a
+production rollout. Failed acknowledgements are documented as unknown outcomes,
+consistent with existing recovery tests.
+
+Six regression tests cover the collision before/after apply, delimiter strings,
+large-number precision, input mutation, JSON restart/replay, and version-1
+rejection with no writes. All 151 unit tests pass, including prior recovery and
+concurrency cases. This resolves the reported implementation defect but is not
+an independent review of the fix; T-039 remains review and T-040 is unstarted.

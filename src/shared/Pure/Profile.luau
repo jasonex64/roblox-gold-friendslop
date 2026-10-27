@@ -5,7 +5,7 @@
 local Profile = {}
 
 -- Schema version of the stored table, not a gameplay value.
-Profile.VERSION = 1
+Profile.VERSION = 2
 
 export type RecordCandidate = {
 	crewHaul: number,
@@ -36,7 +36,7 @@ export type Data = {
 	discoveries: { [string]: boolean },
 	-- Best crew haul per crew-size/assistance/rules-version bucket.
 	records: { [string]: number },
-	-- runId -> fingerprint of the applied manifest; never pruned (deduplication).
+	-- runId -> exact encoded payload of the applied manifest; never pruned.
 	applied: { [string]: string },
 	pending: { [string]: Manifest },
 }
@@ -150,7 +150,11 @@ function Profile.decode(userId: number, raw: any): (Data?, string?)
 		end
 	end
 	for runId, fingerprint in raw.applied do
-		if not text(runId) or not text(fingerprint) then
+		if
+			not text(runId)
+			or not text(fingerprint)
+			or string.sub(fingerprint, 1, 12) ~= "manifest-v2:"
+		then
 			return nil, "invalid_profile"
 		end
 	end
@@ -171,42 +175,45 @@ local function sorted(map: { [string]: any }): { string }
 	return keys
 end
 
--- Canonical text of every manifest field, so equal payloads compare equal.
-local function canonical(m: Manifest): string
-	local record = m.recordCandidate
-	return table.concat({
-		m.runId,
-		tostring(m.userId),
-		m.rulesVersion,
-		tostring(m.crewSize),
-		tostring(m.crewHaul),
-		tostring(m.assisted),
-		tostring(m.eligible),
-		tostring(m.claimTokens),
-		tostring(m.completionDelta),
-		table.concat(sorted(m.discoveries), ","),
-		if record
-			then table.concat({
-				tostring(record.crewHaul),
-				tostring(record.crewSize),
-				tostring(record.assisted),
-				record.rulesVersion,
-			}, ",")
-			else "",
-	}, "|")
-end
-
--- 32-bit FNV-1a of the canonical text: a short applied marker that still detects
--- a conflicting payload for an already applied run.
+-- Exact, length-prefixed encoding, not a hash. Field order and set order are
+-- fixed; lengths/counts distinguish embedded delimiters and nested boundaries.
+-- Keep the fingerprint API name for callers, but never truncate this payload.
 function Profile.fingerprint(m: Manifest): string
-	local hash = 2166136261
-	local source = canonical(m)
-	for i = 1, #source do
-		hash = bit32.bxor(hash, string.byte(source, i))
-		-- hash * 16777619 (the FNV prime, 2^24 + 403) without losing precision.
-		hash = (bit32.lshift(hash, 24) + hash * 403) % 4294967296
+	Profile.checkManifest(m)
+	local parts = { "manifest-v2:" }
+	local function field(value: any)
+		local encoded
+		if type(value) == "number" then
+			-- Round-trip precision distinguishes every supported finite number.
+			encoded = if value == 0 then "0" else string.format("%.17g", value)
+		else
+			encoded = tostring(value)
+		end
+		table.insert(parts, tostring(#encoded) .. ":" .. encoded)
 	end
-	return string.format("%08x", hash)
+	field(m.runId)
+	field(m.userId)
+	field(m.rulesVersion)
+	field(m.crewSize)
+	field(m.crewHaul)
+	field(m.assisted)
+	field(m.eligible)
+	field(m.claimTokens)
+	field(m.completionDelta)
+	local discoveries = sorted(m.discoveries)
+	field(#discoveries)
+	for _, kind in discoveries do
+		field(kind)
+	end
+	local record = m.recordCandidate
+	field(record ~= nil)
+	if record then
+		field(record.crewHaul)
+		field(record.crewSize)
+		field(record.assisted)
+		field(record.rulesVersion)
+	end
+	return table.concat(parts)
 end
 
 local function clone(data: Data): Data
@@ -234,7 +241,12 @@ function Profile.store(data: Data, m: Manifest): (Data, string)
 			if Profile.fingerprint(pending) == fingerprint then "alreadyPending" else "conflict"
 	end
 	local result = clone(data)
-	result.pending[m.runId] = m
+	local stored = table.clone(m)
+	stored.discoveries = table.clone(m.discoveries)
+	if m.recordCandidate then
+		stored.recordCandidate = table.clone(m.recordCandidate)
+	end
+	result.pending[m.runId] = stored
 	return result, "pending"
 end
 
