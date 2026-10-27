@@ -10,6 +10,8 @@ local service = require(game.ServerScriptService.Server.Digging).new(config, {
 		return workspace:GetServerTimeNow()
 	end,
 	activity = function() end,
+	-- T-027 contribution credit; this fixture does not check credit.
+	record = function() end,
 	acceptsPlayer = function()
 		return running
 	end,
