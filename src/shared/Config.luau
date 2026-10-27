@@ -23,6 +23,11 @@ return table.freeze({
 	afkWarningSeconds = 10, -- D-032
 	readySeconds = 3, -- D-024
 	shiftSeconds = 600, -- D-024
+	-- Gate D reward preparation; not wired into live shifts.
+	rewardBaseTokens = 20, -- PROVISIONAL DESIGN §7
+	rewardBonusCap = 20, -- PROVISIONAL DESIGN §7
+	rewardHaulPerTokenPerMember = 500, -- PROVISIONAL DESIGN §7
+	rewardActiveSeconds = 480, -- PROVISIONAL DESIGN §7
 	digSeconds = 1, -- D-024
 	shovelUpgradePrice = 50, -- D-018
 	upgradedDigSeconds = 0.8, -- D-018
