@@ -27,6 +27,10 @@ local function validate(config: any)
 			"afkWarningSeconds",
 			"readySeconds",
 			"shiftSeconds",
+			"rewardBaseTokens",
+			"rewardBonusCap",
+			"rewardHaulPerTokenPerMember",
+			"rewardActiveSeconds",
 			"digSeconds",
 			"shovelUpgradePrice",
 			"upgradedDigSeconds",
@@ -106,6 +110,9 @@ local function validate(config: any)
 		{
 			"crewCapacity",
 			"binBatchesPerMember",
+			"rewardBaseTokens",
+			"rewardBonusCap",
+			"rewardHaulPerTokenPerMember",
 			"sluicePricePerMember",
 			"sluiceLanesPerMember",
 			"sluiceOutputPerMember",
@@ -129,6 +136,19 @@ local function validate(config: any)
 		"Config.starterTools required"
 	)
 	local seen = {}
+	assert(
+		config.rewardActiveSeconds <= config.shiftSeconds,
+		"Config.rewardActiveSeconds exceeds shift"
+	)
+	local maxInteger = 2 ^ 53 - 1 -- IEEE-754 exact integer limit.
+	assert(
+		config.rewardBaseTokens <= maxInteger - config.rewardBonusCap,
+		"Config.reward token sum unsafe"
+	)
+	assert(
+		config.rewardHaulPerTokenPerMember <= maxInteger / config.crewCapacity,
+		"Config.reward divisor unsafe"
+	)
 	for _, name in config.starterTools do
 		assert(
 			type(name) == "string" and name ~= "" and not seen[name],
