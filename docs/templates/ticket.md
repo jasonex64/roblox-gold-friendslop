@@ -8,10 +8,14 @@ agent:
 reviewer:
 depends_on: []
 blocked_on:
+gatekeeper_feature:
 ---
 
 ## Goal
 <one or two sentences>
+
+<!-- Optional gatekeeper_feature: exact server key for an approved pilot mapping;
+leave empty for normal Git-only work. See docs/GATEKEEPER.md. Never store a claim token. -->
 
 ## Why
 Who uses it: <player / server / another system / us>
