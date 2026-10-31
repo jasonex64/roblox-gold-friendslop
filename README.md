@@ -3,6 +3,8 @@
 Three humans, each running an agent (Claude Code or Codex), working async on one Roblox game.
 Agents follow `AGENTS.md`. The full process is `WORKFLOW.md`. The board is `python tools/board.py`.
 
+Gatekeeper is an opt-in pilot for accepted Feature intake and coordination. Git tickets, review and test evidence remain authoritative for implementation. Follow [the pilot runbook](docs/GATEKEEPER.md) for mapped work; existing tickets continue normally. The first live trial needs a ready Feature, an approved ticket mapping and confirmed agent identity. No backlog migration is automatic.
+
 ```
 GitHub main (truth) --git pull--> your folder --rojo serve--> your Roblox Studio
                                        ^                            |

@@ -5,7 +5,7 @@ If this file and anything else disagree, this file wins until it is changed by a
 
 ## 1. Where state lives
 
-Everything is a file in git. No state lives in chat history, Discord, or an agent's memory.
+Git holds implementation, decisions, test evidence and review history. The opt-in Gatekeeper pilot also holds Feature intake, coordination claims and short progress in the team's Discord/Sheet workflow. Gatekeeper state does not replace Git ticket state or authorize implementation by itself. Chat history and agent memory are not durable handoffs. See [the pilot runbook](docs/GATEKEEPER.md).
 
 | What | Where | Who writes it |
 |---|---|---|
@@ -17,6 +17,8 @@ Everything is a file in git. No state lives in chat history, Discord, or an agen
 | Experiments | `docs/experiments/EXP-###.md` | agents, written BEFORE running |
 | Milestone reviews | `docs/reviews/M#-review.md` | reviewer (not an author of that milestone's tickets) |
 | Small / deferred stuff | `docs/NEXT_REVISION.md` | anyone, append-only |
+| Accepted Feature intake and coordination | Gatekeeper (team Discord/Sheet) | humans decide; agents claim and report |
+| Feature-to-ticket mapping for the pilot | optional `gatekeeper_feature` in the Git ticket | approved planning work; exact server key |
 
 ## 2. Starting a session (every agent, every time)
 
@@ -25,6 +27,8 @@ Everything is a file in git. No state lives in chat history, Discord, or an agen
 3. Pick work: a ticket assigned to your human, or a `todo` ticket in the current milestone whose `depends_on` are all `done`.
 4. Read that ticket fully, including its Log. The last Log entry tells you where the previous agent stopped.
 5. Claim it: create branch `T-###-short-name` from main, set `status: doing`, `owner`, `agent`, commit as `T-###: claim`, push the branch. The pushed branch is the lock (D-010); `board.py` shows it as `(claimed: ...)`. If a `T-###-*` branch already exists, someone else claimed it — pick another.
+
+For a mapped Gatekeeper pilot ticket, use the detailed session order in `docs/GATEKEEPER.md`: inspect Gatekeeper assignment and Feature first, reconcile Git eligibility and existing branches, then acquire the coordination claim and compatible Git branch before coding. This adds a check to the existing lock; it does not replace D-010. Resume a branch only when its ownership is established. Unmapped tickets continue normally, including when Gatekeeper has no ready Features.
 
 Nobody pushes to `main` directly, not even for claims (D-010). New tickets are created by humans in a PR, or by an agent under a planning ticket.
 
@@ -53,6 +57,8 @@ Open questions: <or "none">
 
 Unfinished work is fine. An unlogged session is not.
 
+For mapped work, report a concise Gatekeeper update after pushing and read returned notices. The Git Log remains the detailed evidence. On service failure, preserve and push work, log the failed synchronization and stop new mapped implementation until ownership can be reconciled. Follow the runbook before releasing or resuming an expired claim.
+
 `python tools/check_docs.py` enforces this: any commit that touches a file other than its own ticket file or `docs/NEXT_REVISION.md` requires a new Log entry on that ticket in the same range. Run it before pushing a PR. CI (`.github/workflows/checks.yml`) runs it plus `board.py`, `numbers.py`, the tool tests, and `lune run scripts/check` on every PR and every push to `main`.
 
 ## 5. Finishing a ticket
@@ -60,6 +66,8 @@ Unfinished work is fine. An unlogged session is not.
 1. All acceptance criteria checked, with evidence (test output or manual check result) in the Log.
 2. Set `status: review`, `reviewer: <a different human>`. Open PR. CI must be green.
 3. Reviewer checks the Log matches the diff, re-runs the gates, then sets `status: done` on the PR branch (one commit, ticket file only) and merges — or returns it. One PR per ticket, no separate closeout PR (D-012). Merging is the reviewer's job, never the author's or their agent's.
+
+For mapped work, settle Gatekeeper tasks with evidence and submit the PR using `complete_feature`; this corresponds to awaiting review, not Git `done`. The human verifies the Feature after independent review and merge, or sends it back with findings. A Gatekeeper Verify does not bypass Git gates, and a merge alone does not silently verify a Feature. Before revising sent-back work, re-read the brief and reconcile ownership. Full lifecycle and mismatch handling: `docs/GATEKEEPER.md`.
 
 ## 6. Milestone review
 
