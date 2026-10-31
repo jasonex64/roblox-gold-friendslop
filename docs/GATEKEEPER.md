@@ -55,6 +55,21 @@ The server's advice to carry on with a best guess is limited by repository rules
 
 ## Trial evidence and exit
 
+### Assigned handoff: yukicide and jason
+
+Assigned by yukicide under T-044 on October 30, 2026. Assignments reserve responsibilities, not branches or Gatekeeper claims.
+
+| Order | Owner | Task and deliverable | Next actor |
+|---|---|---|---|
+| Now | jason | Independently review the T-044 planning PR; if it passes, record review/closeout and merge. | jason starts T-045 |
+| Preparation — T-045 | jason | Review/close out T-043 based on evidence; verify his connection and distinct agent identity with the administrator; agree one ready Feature, its approved implementation ticket and expected branch with yukicide. Record a non-secret handoff. | yukicide reviews T-045 |
+| During preparation | yukicide | Verify his own client can read my_work and the ready queue; supply non-secret results to Jason and help select the Feature. Do not claim it before preparation and the mapping are approved. | jason records both clients' evidence |
+| Live implementation | yukicide | Once T-043/T-045 are done, claim the approved mapped implementation ticket and Feature, check the returned branch, post steps, implement, verify, push/report and submit the PR. Use that ticket's branch and Log. | jason independently reviews implementation |
+| Review | jason | Check implementation evidence and gates; merge only when review passes, then human Verify. If it fails, Send back with findings; yukicide reconciles and fixes under the runbook. | yukicide collates trial results |
+| Trial closeout — T-046 | yukicide | After implementation, claim this separate docs-only ticket and link claim/resume/progress/PR/review evidence plus a human continue/revise decision. | jason reviews T-046 |
+
+T-045 is reviewed by yukicide; T-046 and yukicide's implementation are reviewed by jason. If a selected implementation ticket has a different established owner, choose a different ready Feature or obtain an explicit reassignment before claiming it. T-045/T-046 remain unmapped coordination/validation tickets: only the approved implementation ticket gets `gatekeeper_feature`. Empty queue or unresolved identity/branch compatibility is a logged blocker, not permission to seed or claim unrelated work. These assignments do not change T-042 or other existing gameplay assignments.
+
 T-043 records the read-only readiness rehearsal. A real end-to-end trial remains pending until there is an approved mapped Feature and the connection/identity checks above pass. Then record claim/resume, compatible branch, one pushed progress update, task evidence, PR submission and independent review/Verify or Send back in that ticket's Log. Record observable failures rather than assuming server enforcement.
 
 After that first trial, humans decide whether to expand the pilot. Before adopting Gatekeeper as the sole assignment authority, separately review how to replace D-010, board claims and existing ticket enforcement. To stop the pilot, preserve Logs/PRs and reconcile or release active Gatekeeper claims; unmapped Git work already has its normal path. Do not remove a mapping while a claim is still unresolved.
